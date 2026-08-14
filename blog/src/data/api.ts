@@ -4,7 +4,7 @@
  * Single source-of-truth for every HTTP call the frontend makes to the
  * blog-backend REST API.  Built on top of the thin axios instance in
  * lib/api.ts, which already handles:
- *   • Base URL  (http://localhost:5000/api)
+ *   • Base URL  (http://localhost:3000/api)
  *   • Attaching the JWT Bearer token from localStorage
  *   • Clearing the token on 401 responses
  * ─────────────────────────────────────────────────────────────────────────────
