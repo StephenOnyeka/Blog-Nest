@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification } from '../entities/notification.entity';
 import { Profile } from '../entities/profile.entity';
+import { NotificationsGateway } from './notifications.gateway';
 
 @Injectable()
 export class NotificationsService {
@@ -11,6 +12,7 @@ export class NotificationsService {
     private readonly notificationRepo: Repository<Notification>,
     @InjectRepository(Profile)
     private readonly profileRepo: Repository<Profile>,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   private toPublic(n: Notification) {
@@ -73,7 +75,7 @@ export class NotificationsService {
     return { success: true };
   }
 
-  // Utility: create a notification (called by other services)
+  // Utility: create a notification and emit via WebSockets in real time
   async create(userId: number, type: string, message: string, articleId?: number) {
     const notification = this.notificationRepo.create({
       user_id: userId,
@@ -81,6 +83,11 @@ export class NotificationsService {
       message,
       article_id: articleId ?? null,
     });
-    await this.notificationRepo.save(notification);
+    const saved = await this.notificationRepo.save(notification);
+
+    const profile = await this.profileRepo.findOne({ where: { id: userId } });
+    if (profile) {
+      this.notificationsGateway.emitNotification(profile.public_id, this.toPublic(saved));
+    }
   }
 }

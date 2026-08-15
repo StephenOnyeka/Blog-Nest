@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Article } from '../entities/article.entity';
 import { Profile } from '../entities/profile.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class ArticlesService {
@@ -11,6 +12,7 @@ export class ArticlesService {
     private readonly articleRepo: Repository<Article>,
     @InjectRepository(Profile)
     private readonly profileRepo: Repository<Profile>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private mapToFrontendArticle(article: Article) {
@@ -139,10 +141,23 @@ export class ArticlesService {
   }
 
   async clap(publicId: string) {
-    const article = await this.articleRepo.findOne({ where: { public_id: publicId } });
+    const article = await this.articleRepo.findOne({
+      where: { public_id: publicId },
+      relations: { author: true },
+    });
     if (!article) throw new NotFoundException('Article not found');
 
     await this.articleRepo.increment({ id: article.id }, 'claps', 1);
+
+    if (article.author) {
+      await this.notificationsService.create(
+        article.author.id,
+        'clap',
+        `Someone clapped for your article "${article.title}".`,
+        article.id,
+      );
+    }
+
     return { success: true, claps: article.claps + 1 };
   }
 }

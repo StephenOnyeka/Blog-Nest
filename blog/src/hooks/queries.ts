@@ -9,7 +9,10 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { connectSocket, disconnectSocket } from "../lib/socket";
 import {
   getMe,
   getProfile,
@@ -84,17 +87,39 @@ export function useNotifications(enabled: boolean) {
 }
 
 /**
- * Unread notification count. This is the one query that stays live: it keeps a
- * 30s poll so the navbar badge reflects new notifications even under the
- * app-wide infinite cache.
+ * Unread notification count. Driven by real-time WebSockets instead of HTTP polling.
  */
 export function useUnreadNotificationCount(enabled: boolean) {
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const socket = connectSocket(token);
+
+    const handleNotification = (data: { message: string }) => {
+      if (data?.message) {
+        toast.info(data.message);
+      }
+      qc.invalidateQueries({ queryKey: queryKeys.unreadNotificationCount });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications });
+    };
+
+    socket.on("notification", handleNotification);
+
+    return () => {
+      socket.off("notification", handleNotification);
+      disconnectSocket();
+    };
+  }, [enabled, qc]);
+
   return useQuery({
     queryKey: queryKeys.unreadNotificationCount,
     queryFn: getUnreadNotificationCount,
     enabled,
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
   });
 }
 

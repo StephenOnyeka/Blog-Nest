@@ -8,6 +8,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Profile } from '../entities/profile.entity';
 import { Follow } from '../entities/follow.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class UsersService {
@@ -16,6 +17,7 @@ export class UsersService {
     private readonly profileRepo: Repository<Profile>,
     @InjectRepository(Follow)
     private readonly followRepo: Repository<Follow>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private toPublicUser(profile: Profile) {
@@ -64,6 +66,13 @@ export class UsersService {
     // Update counts atomically using query builder
     await this.profileRepo.increment({ id: follower.id }, 'following_count', 1);
     await this.profileRepo.increment({ id: following.id }, 'followers_count', 1);
+
+    // Send real-time notification via WebSockets
+    await this.notificationsService.create(
+      following.id,
+      'follow',
+      `${follower.name} (@${follower.username}) started following you.`,
+    );
 
     return { message: 'Followed successfully' };
   }
