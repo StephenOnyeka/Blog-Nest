@@ -16,6 +16,9 @@ import { connectSocket, disconnectSocket } from "../lib/socket";
 import {
   getMe,
   getProfile,
+  getFollowing,
+  followUser,
+  unfollowUser,
   getArticles,
   getArticleById,
   getNotifications,
@@ -33,6 +36,7 @@ import {
 export const queryKeys = {
   me: ["me"] as const,
   profile: (userId: string) => ["profile", userId] as const,
+  following: (userId: string) => ["following", userId] as const,
   articles: (params: GetArticlesParams = {}) => ["articles", params] as const,
   article: (id: string) => ["article", id] as const,
   notifications: ["notifications"] as const,
@@ -57,6 +61,38 @@ export function useProfile(userId: string | undefined) {
     queryKey: queryKeys.profile(userId ?? ""),
     queryFn: () => getProfile(userId as string),
     enabled: !!userId,
+  });
+}
+
+export function useFollowing(userId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.following(userId ?? ""),
+    queryFn: () => getFollowing(userId as string),
+    enabled: !!userId,
+  });
+}
+
+export function useFollowUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (authorId: string) => followUser(authorId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["following"] });
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: queryKeys.me });
+    },
+  });
+}
+
+export function useUnfollowUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (authorId: string) => unfollowUser(authorId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["following"] });
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      qc.invalidateQueries({ queryKey: queryKeys.me });
+    },
   });
 }
 

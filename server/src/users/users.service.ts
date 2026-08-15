@@ -37,6 +37,15 @@ export class UsersService {
     };
   }
 
+  private toPublicMini(profile: Profile) {
+    return {
+      id: profile.public_id,
+      name: profile.name,
+      username: profile.username,
+      avatar: profile.avatar ?? null,
+    };
+  }
+
   private async findProfileByIdentifier(identifier: string) {
     const where = isUuid(identifier)
       ? [{ public_id: identifier }, { username: identifier }]
@@ -48,6 +57,21 @@ export class UsersService {
     const profile = await this.findProfileByIdentifier(identifier);
     if (!profile) throw new NotFoundException(`Profile not found`);
     return this.toPublicUser(profile);
+  }
+
+  async getFollowing(identifier: string) {
+    const profile = await this.findProfileByIdentifier(identifier);
+    if (!profile) throw new NotFoundException('User not found');
+
+    const follows = await this.followRepo.find({
+      where: { follower_id: profile.id },
+      relations: { following: true },
+      order: { created_at: 'DESC' },
+    });
+
+    return follows
+      .filter((f) => !!f.following)
+      .map((f) => this.toPublicMini(f.following));
   }
 
   async updateProfile(identifier: string, updates: { name?: string; username?: string; avatar?: string; bio?: string }) {

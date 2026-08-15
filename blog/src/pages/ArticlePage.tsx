@@ -49,7 +49,7 @@ export default function ArticlePage() {
 
   if (!article) {
     return (
-      <PageTemplate hideSidebar>
+      <PageTemplate>
         <div className="text-center py-20 px-6">
           <h1 className="text-3xl font-bold mb-4">Article not found</h1>
           <button
@@ -86,14 +86,14 @@ export default function ArticlePage() {
   ).slice(0, 3);
 
   return (
-    <PageTemplate hideSidebar>
+    <PageTemplate>
       {/* Reading progress bar */}
       <div
         className="fixed top-0 left-0 h-0.5 bg-neutral-900 z-[200] transition-all duration-100"
         style={{ width: `${scrollProgress}%` }}
       />
 
-      <div className="max-w-[740px] mx-auto px-6 py-8 overflow-x-hidden">
+      <div className="max-w-[740px] mx-auto px-4 sm:px-6 py-8 overflow-x-hidden">
         {/* Back button */}
         <button
           onClick={() => navigate(-1)}
@@ -118,8 +118,8 @@ export default function ArticlePage() {
           </div>
 
           {/* Title */}
-          <h1 className="font-serif text-[38px] md:text-[46px] font-bold text-neutral-900 leading-tight mb-4">{article.title}</h1>
-          <p className="text-xl text-neutral-500 leading-relaxed mb-8">{article.subtitle}</p>
+          <h1 className="font-serif text-[30px] sm:text-[38px] md:text-[46px] font-bold text-neutral-900 leading-tight mb-4">{article.title}</h1>
+          <p className="text-lg sm:text-xl text-neutral-500 leading-relaxed mb-8">{article.subtitle}</p>
 
           {/* Author bar */}
           <div className="flex items-center justify-between flex-wrap gap-4 py-4 border-t border-b border-neutral-100">
@@ -212,7 +212,7 @@ export default function ArticlePage() {
         </div>
 
         {/* Clap zone */}
-        <div className="flex items-center gap-4 py-8 border-t border-b border-neutral-100 my-10">
+        <div className="flex items-center flex-wrap gap-4 py-8 border-t border-b border-neutral-100 my-10">
           <button
             className={`flex items-center gap-2 text-base font-medium transition-colors ${clapped ? 'text-red-600' : 'text-neutral-500 hover:text-neutral-900'}`}
             onClick={() => {
@@ -255,7 +255,7 @@ export default function ArticlePage() {
         </div>
 
         {/* Author card */}
-        <div className="bg-neutral-50 border border-neutral-100 rounded-lg p-8 my-10 flex gap-5 items-start">
+        <div className="bg-neutral-50 border border-neutral-100 rounded-lg p-4 sm:p-8 my-10 flex gap-4 sm:gap-5 items-start">
           <Link to={`/profile/${article.author.username}`} className="block">
             <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 bg-neutral-100">
               <img src={article.author.avatar} alt={article.author.name} className="w-full h-full object-cover" />

@@ -96,7 +96,7 @@ export default function ArticleCard({ article, showThumbnail = true }: ArticleCa
         <img
           src={article.thumbnail}
           alt={article.title}
-          className="w-[112px] h-[112px] md:w-[152px] object-cover bg-neutral-100 shrink-0"
+          className="w-[88px] h-[88px] sm:w-[112px] sm:h-[112px] md:w-[152px] md:h-[112px] object-cover bg-neutral-100 shrink-0"
         />
       )}
     </Link>

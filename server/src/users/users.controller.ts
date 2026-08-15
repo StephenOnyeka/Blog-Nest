@@ -29,6 +29,15 @@ export class UsersController {
     return this.usersService.getProfile(id);
   }
 
+  @Get(':id/following')
+  @ApiOperation({ summary: 'List users that a given user is following' })
+  @ApiParam({ name: 'id', description: 'User public UUID or username' })
+  @ApiResponse({ status: 200, description: 'Array of followed user mini profiles' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async getFollowing(@Param('id') id: string) {
+    return this.usersService.getFollowing(id);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiBearerAuth('JWT-auth')

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import LeftSidebarNav from './LeftSidebarNav';
+import MobileNav from './MobileNav';
 
 interface PageTemplateProps {
   children: ReactNode;
@@ -25,7 +26,7 @@ export default function PageTemplate({
         </main>
       ) : (
         <main className="flex-1">
-          <div className="flex max-w-7xl mx-auto px-6 gap-0 pt-6 items-start">
+          <div className="flex max-w-7xl mx-auto px-4 sm:px-6 gap-0 pt-6 items-start">
             {/* Left sidebar nav */}
             <LeftSidebarNav />
             {/* Page content */}
@@ -37,6 +38,12 @@ export default function PageTemplate({
       )}
 
       {showFooter && <Footer />}
+
+      {/* Bottom padding clears the fixed mobile nav on small screens */}
+      <div className="h-14 lg:hidden" aria-hidden="true" />
+
+      {/* Fixed bottom navigation — visible below lg breakpoint */}
+      <MobileNav />
     </>
   );
 }

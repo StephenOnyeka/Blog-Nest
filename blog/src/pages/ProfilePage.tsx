@@ -106,6 +106,7 @@ export default function ProfilePage() {
           prev ? { ...prev, followersCount: Math.max(0, prev.followersCount - 1) } : null
         );
       }
+      queryClient.invalidateQueries({ queryKey: ['following'] });
     } catch (err: any) {
       setIsFollowing(!nextFollowingState);
       toast.error(err.response?.data?.message || 'Action failed');
@@ -179,7 +180,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <PageTemplate hideSidebar>
-        <div className="max-w-[1192px] mx-auto px-6 py-16 flex justify-center items-center">
+        <div className="max-w-[1192px] mx-auto px-4 sm:px-6 py-16 flex justify-center items-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-neutral-900"></div>
         </div>
       </PageTemplate>
@@ -191,7 +192,7 @@ export default function ProfilePage() {
   if (!activeUser) {
     return (
       <PageTemplate hideSidebar>
-        <div className="text-center py-20 px-6">
+        <div className="text-center py-20 px-4 sm:px-6">
           <h1 className="text-3xl font-bold mb-4 text-neutral-900">User not found</h1>
           <p className="text-neutral-500 mb-6">The author profile you are looking for does not exist.</p>
           <Link to="/" className="text-green-700 font-medium hover:underline">
@@ -203,19 +204,19 @@ export default function ProfilePage() {
   }
 
   return (
-    <PageTemplate hideSidebar>
-      {/* Profile header */}
-      <div className="border-b border-neutral-200 bg-white">
-        <div className="max-w-[1192px] mx-auto px-6 py-10">
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex-1">
-              <h1 className="font-serif text-4xl font-bold text-neutral-900 mb-2">
+      <PageTemplate>
+        {/* Profile header */}
+        <div className="border-b border-neutral-200 bg-white mb-6">
+          <div className="py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-6">
+            <div className="flex-1 min-w-0">
+              <h1 className="font-serif text-3xl sm:text-4xl font-bold text-neutral-900 mb-2">
                 {activeUser.name}
               </h1>
               <p className="text-base text-neutral-500 max-w-lg mb-4">
                 {activeUser.bio || 'No bio provided.'}
               </p>
-              <div className="flex items-center gap-5 text-sm text-neutral-500">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-neutral-500">
                 <span>
                   <strong className="text-neutral-900 font-semibold">
                     {(activeUser.followersCount ?? 0).toLocaleString()}
@@ -233,7 +234,7 @@ export default function ProfilePage() {
                 </span>
               </div>
             </div>
-            <div className="flex flex-col items-center gap-3 ml-8">
+            <div className="flex items-center gap-3 sm:flex-col sm:items-center sm:ml-8 shrink-0">
               {/* Profile Picture with hover overlay to trigger Avatar Picker */}
               <div
                 className={`relative group w-20 h-20 rounded-full overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200 shadow-sm ${
@@ -293,11 +294,11 @@ export default function ProfilePage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-0 border-b border-transparent">
+          <div className="flex gap-0 border-b border-transparent overflow-x-auto">
             {(['home', 'lists', 'about'] as const).map((tab) => (
               <button
                 key={tab}
-                className={`text-sm font-medium px-1 pb-3 mr-6 border-b-2 transition-colors capitalize ${
+                className={`text-sm font-medium px-1 pb-3 mr-5 sm:mr-6 whitespace-nowrap border-b-2 transition-colors capitalize ${
                   activeTab === tab
                     ? 'border-neutral-900 text-neutral-900'
                     : 'border-transparent text-neutral-500 hover:text-neutral-900'
@@ -312,7 +313,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Content Area */}
-      <div className="max-w-[1192px] mx-auto px-6 pt-8 pb-16">
+      <div className="pt-2 pb-16">
         {activeTab === 'home' && (
           <div className="max-w-[740px]">
             {articles.length === 0 ? (
@@ -363,7 +364,7 @@ export default function ProfilePage() {
                 </div>
 
                 {/* Bottom Bar matching Screenshot 2 */}
-                <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-neutral-100">
                   {/* Left: Insert photo button */}
                   <label className="inline-flex items-center gap-2 cursor-pointer group select-none">
                     <div className="w-8 h-8 rounded-full border border-green-600 flex items-center justify-center text-green-600 group-hover:bg-green-50 transition-colors">
@@ -381,7 +382,7 @@ export default function ProfilePage() {
                   </label>
 
                   {/* Right: Cancel & Save buttons */}
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 self-end sm:self-auto">
                     <button
                       type="button"
                       onClick={() => setIsEditingBio(false)}
@@ -402,7 +403,7 @@ export default function ProfilePage() {
               </div>
             ) : activeUser.bio ? (
               /* VIEWING EXISTING BIO STATE */
-              <div className="bg-neutral-50/60 border border-neutral-200/80 rounded-2xl p-8 shadow-sm">
+              <div className="bg-neutral-50/60 border border-neutral-200/80 rounded-2xl p-5 sm:p-8 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-bold text-neutral-900">About {activeUser.name}</h3>
                   {isOwn && (
@@ -413,7 +414,7 @@ export default function ProfilePage() {
                       }}
                       className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 hover:text-neutral-900 border border-neutral-300 rounded-full px-4 py-1.5 hover:bg-white transition-colors"
                     >
-                      <Edit size={16} /> Edit bio
+                      <Edit size={16} variant="Linear" color="currentColor" /> Edit bio
                     </button>
                   )}
                 </div>

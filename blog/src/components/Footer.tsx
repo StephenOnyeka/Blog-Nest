@@ -28,7 +28,7 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-neutral-200 mt-20 py-8 bg-white">
-      <div className="max-w-[1192px] mx-auto px-6 flex flex-col gap-5 items-center justify-center">
+      <div className="max-w-[1192px] mx-auto px-4 sm:px-6 flex flex-col gap-5 items-center justify-center">
         <form
           onSubmit={handleSubscribe}
           className="flex flex-wrap items-center justify-center gap-2"

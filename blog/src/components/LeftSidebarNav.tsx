@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useFollowing } from "../hooks/queries";
 import { WHO_TO_FOLLOW } from "../data/mockData";
 import {
   Home2,
@@ -21,6 +22,7 @@ const NAV_LINKS = [
 export default function LeftSidebarNav() {
   const location = useLocation();
   const { user, isLoggedIn } = useAuth();
+  const { data: followedUsers, isLoading } = useFollowing(user?.id);
 
   // Resolve profile link to actual username if logged in
   const resolvedLinks = NAV_LINKS.map((link) => {
@@ -29,6 +31,16 @@ export default function LeftSidebarNav() {
     }
     return link;
   });
+
+  // Display DB-followed users if logged in; fall back to WHO_TO_FOLLOW mock array for guests
+  const displayAuthors = isLoggedIn
+    ? (followedUsers ?? []).map((u) => ({
+        id: u.id,
+        username: u.username,
+        name: u.name,
+        avatar: u.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${u.username}`,
+      }))
+    : WHO_TO_FOLLOW;
 
   return (
     <nav className="sticky top-20 self-start hidden lg:flex flex-col gap-0 w-[220px] shrink-0 pr-6">
@@ -73,28 +85,34 @@ export default function LeftSidebarNav() {
           <span>Following</span>
         </div>
 
-        {WHO_TO_FOLLOW.map((author) => (
-          <Link
-            key={author.id}
-            to={`/profile/${author.username}`}
-            className="flex items-center justify-between gap-2 px-4 py-2 rounded-lg text-[14px] text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 transition-colors group"
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 bg-neutral-200">
-                <img
-                  src={author.avatar}
-                  alt={author.name}
-                  className="w-full h-full object-cover"
-                />
+        {isLoading ? (
+          <div className="px-4 py-2 text-xs text-neutral-400">Loading following...</div>
+        ) : displayAuthors.length > 0 ? (
+          displayAuthors.map((author) => (
+            <Link
+              key={author.id}
+              to={`/profile/${author.username}`}
+              className="flex items-center justify-between gap-2 px-4 py-2 rounded-lg text-[14px] text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900 transition-colors group"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-full overflow-hidden shrink-0 bg-neutral-200">
+                  <img
+                    src={author.avatar}
+                    alt={author.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <span className="truncate font-normal group-hover:font-medium transition-all">
+                  {author.name}
+                </span>
               </div>
-              <span className="truncate font-normal group-hover:font-medium transition-all">
-                {author.name}
-              </span>
-            </div>
-            {/* Online status dot */}
-            <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
-          </Link>
-        ))}
+              {/* Online status dot */}
+              <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+            </Link>
+          ))
+        ) : (
+          <div className="px-4 py-1 text-xs text-neutral-400">Not following anyone yet</div>
+        )}
 
         {/* Find writers CTA */}
         <div className="px-4 mt-4">

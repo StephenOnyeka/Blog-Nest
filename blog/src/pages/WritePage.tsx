@@ -182,7 +182,7 @@ export default function WritePage() {
   /* ── Published success screen ──────────────────── */
   if (published) {
     return (
-      <PageTemplate showFooter={false} hideSidebar>
+      <PageTemplate showFooter={false}>
         <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center px-6">
           <div className="text-6xl">🎉</div>
           <h1 className="text-[28px] font-extrabold text-neutral-900 tracking-[-0.5px]">
@@ -212,9 +212,9 @@ export default function WritePage() {
 
   /* ── Editor ─────────────────────────────────────── */
   return (
-    <PageTemplate showFooter={false} hideSidebar>
+    <PageTemplate showFooter={false}>
       {/* Top bar */}
-      <div className="sticky top-0 z-[100] bg-white border-b border-neutral-100 px-6 flex items-center justify-between h-[57px] gap-4">
+      <div className="sticky top-0 z-[100] bg-white border-b border-neutral-100 px-4 sm:px-6 flex items-center justify-between h-[57px] gap-3 sm:gap-4">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-neutral-500 bg-transparent border-none cursor-pointer text-sm font-sans p-0 shrink-0 hover:text-neutral-900 transition-colors"
@@ -236,9 +236,9 @@ export default function WritePage() {
           </span>
         </button>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {words > 0 && (
-            <span className="text-xs text-neutral-400">
+            <span className="hidden sm:inline text-xs text-neutral-400">
               {words.toLocaleString()} words · {readMins} min read
             </span>
           )}
@@ -251,7 +251,7 @@ export default function WritePage() {
             <Setting2 size={20} variant="Linear" color="currentColor" />
           </button>
           <button
-            className="bg-neutral-900 text-white rounded-full px-5 py-2 text-sm font-medium transition-opacity hover:opacity-85 disabled:opacity-40"
+            className="bg-neutral-900 text-white rounded-full px-4 sm:px-5 py-2 text-sm font-medium transition-opacity hover:opacity-85 disabled:opacity-40"
             onClick={() => canPublish && setShowPublishPanel(true)}
             disabled={!canPublish}
           >
@@ -261,10 +261,10 @@ export default function WritePage() {
       </div>
 
       {/* Editor area */}
-      <div className="max-w-[740px] mx-auto px-6 pt-12 pb-20">
+      <div className="max-w-[740px] mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-20">
         {/* Title */}
         <textarea
-          className="w-full border-none outline-none font-serif text-[42px] font-light text-neutral-900 placeholder:text-neutral-300 leading-tight mb-2 resize-none bg-transparent"
+          className="w-full border-none outline-none font-serif text-[30px] sm:text-[42px] font-light text-neutral-900 placeholder:text-neutral-300 leading-tight mb-2 resize-none bg-transparent"
           placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
@@ -278,7 +278,7 @@ export default function WritePage() {
 
         {/* Subtitle */}
         <textarea
-          className="w-full border-none outline-none font-sans text-[22px] text-neutral-500 leading-relaxed mb-6 resize-none bg-transparent placeholder:text-neutral-300"
+          className="w-full border-none outline-none font-sans text-[18px] sm:text-[22px] text-neutral-500 leading-relaxed mb-6 resize-none bg-transparent placeholder:text-neutral-300"
           placeholder="Add a subtitle (optional)"
           value={subtitle}
           onChange={(e) => setSubtitle(e.target.value)}

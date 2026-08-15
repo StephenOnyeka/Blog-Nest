@@ -121,6 +121,12 @@ export const getProfile = async (userId: string): Promise<ApiUser> => {
   return res.data;
 };
 
+/** Get users followed by a user */
+export const getFollowing = async (userId: string): Promise<ApiAuthor[]> => {
+  const res = await api.get<ApiAuthor[]>(`/users/${userId}/following`);
+  return res.data;
+};
+
 /** Update the logged-in user's profile (own id only) */
 export const updateProfile = async (
   userId: string,

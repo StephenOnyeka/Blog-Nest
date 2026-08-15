@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Article } from '../entities/article.entity';
 import { Profile } from '../entities/profile.entity';
+import { Follow } from '../entities/follow.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -12,8 +13,25 @@ export class ArticlesService {
     private readonly articleRepo: Repository<Article>,
     @InjectRepository(Profile)
     private readonly profileRepo: Repository<Profile>,
+    @InjectRepository(Follow)
+    private readonly followRepo: Repository<Follow>,
     private readonly notificationsService: NotificationsService,
   ) {}
+
+  /** Fan-out: notify all followers of authorId that a new article was published */
+  private async notifyFollowers(authorId: number, articleId: number, articleTitle: string, authorName: string) {
+    const follows = await this.followRepo.find({ where: { following_id: authorId } });
+    await Promise.all(
+      follows.map((f) =>
+        this.notificationsService.create(
+          f.follower_id,
+          'article_published',
+          `${authorName} published a new story: "${articleTitle}".`,
+          articleId,
+        ),
+      ),
+    );
+  }
 
   private mapToFrontendArticle(article: Article) {
     return {
@@ -80,14 +98,21 @@ export class ArticlesService {
     const author = await this.profileRepo.findOne({ where: { public_id: authorPublicId } });
     if (!author) throw new NotFoundException('Author not found');
 
+    const isDraft = data.isDraft ?? true;
     const article = this.articleRepo.create({
       ...data,
       author_id: author.id,
-      is_draft: data.isDraft ?? true,
-      published_at: data.isDraft ? null : new Date(),
+      is_draft: isDraft,
+      published_at: isDraft ? null : new Date(),
     });
 
     const savedArticle = (await this.articleRepo.save(article)) as any;
+
+    // If published immediately, fan-out notifications to followers
+    if (!isDraft) {
+      await this.notifyFollowers(author.id, savedArticle.id, savedArticle.title, author.name);
+    }
+
     // Reload with author relation
     return this.findOne(savedArticle.public_id);
   }
@@ -103,8 +128,11 @@ export class ArticlesService {
       throw new UnauthorizedException('You can only edit your own articles');
     }
 
+    // Detect draft → published transition
+    const beingPublished = data.isDraft === false && article.is_draft === true;
+
     // Support draft toggle logic
-    if (data.isDraft === false && article.is_draft === true) {
+    if (beingPublished) {
       article.published_at = new Date();
     } else if (data.isDraft === true) {
       article.published_at = null as any;
@@ -122,6 +150,12 @@ export class ArticlesService {
     });
 
     await this.articleRepo.save(article);
+
+    // Fan-out notifications when an article transitions from draft → published
+    if (beingPublished) {
+      await this.notifyFollowers(article.author.id, article.id, article.title, article.author.name);
+    }
+
     return this.mapToFrontendArticle(article);
   }
 

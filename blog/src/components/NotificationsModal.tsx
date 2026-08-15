@@ -131,13 +131,13 @@ export default function NotificationsModal({ isOpen, onClose }: NotificationsMod
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl relative border border-neutral-100 flex flex-col max-h-[85vh]"
+        className="bg-white rounded-2xl max-w-lg w-full h-[500px] p-4 sm:p-6 shadow-2xl relative border border-neutral-100 flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
           <div className="flex items-center gap-2">
-            <NotificationIcon size={22} variant="Bold" className="text-neutral-900" />
+            <NotificationIcon size={22} variant="Bold" color={"#171717"} className="text-neutral-900" />
             <h2 className="text-xl font-bold text-neutral-900">Notifications</h2>
             {unreadCount > 0 && (
               <span className="bg-neutral-900 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
@@ -155,8 +155,8 @@ export default function NotificationsModal({ isOpen, onClose }: NotificationsMod
         </div>
 
         {/* Filter Tabs & Header Actions */}
-        <div className="flex items-center justify-between pt-3 pb-2 border-b border-neutral-100">
-          <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-3 pb-2 border-b border-neutral-100">
+          <div className="flex gap-1 bg-neutral-100 p-1 rounded-xl overflow-x-auto">
             {(
               [
                 { key: 'all', label: `All (${notifications.length})` },

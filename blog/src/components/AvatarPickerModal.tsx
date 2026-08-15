@@ -123,7 +123,7 @@ export default function AvatarPickerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl max-w-lg h-[500px] w-full p-6 shadow-2xl relative border border-neutral-100 flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-2xl max-w-lg h-[500px] w-full p-4 sm:p-6 shadow-2xl relative border border-neutral-100 flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
           <div>
@@ -168,7 +168,7 @@ export default function AvatarPickerModal({
             <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-3">
               DiceBear Avatars (16 Options)
             </label>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
               {avatarList.map((item) => {
                 const isSelected = selectedBase64 === item.base64;
                 return (
