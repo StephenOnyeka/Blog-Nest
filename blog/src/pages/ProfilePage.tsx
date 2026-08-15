@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Edit, Link1, People, CloseCircle, TickCircle } from 'iconsax-react';
+import { Edit, Link1, People, CloseCircle, Gallery } from 'iconsax-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import PageTemplate from '../components/PageTemplate';
 import ArticleCard from '../components/ArticleCard';
+import AvatarPickerModal from '../components/AvatarPickerModal';
 import { useAuth } from '../context/AuthContext';
 import { useAuthGate } from '../context/AuthGateContext';
 import {
@@ -30,7 +31,13 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
+  
+  // Modals & About tab states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
+  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [bioText, setBioText] = useState('');
+  const [isSavingBio, setIsSavingBio] = useState(false);
 
   // Determine if viewing own profile
   const isOwn =
@@ -50,6 +57,7 @@ export default function ProfilePage() {
         const profileData = await getProfile(identifier);
         if (!isMounted) return;
         setProfile(profileData);
+        setBioText(profileData.bio || '');
 
         // Fetch user articles
         const articlesRes = await getArticles({ author_id: profileData.id, limit: 50 });
@@ -112,6 +120,62 @@ export default function ProfilePage() {
     toast.success('Profile link copied to clipboard!');
   };
 
+  // Handle Avatar selection from DiceBear / Local picture
+  const handleAvatarUpdate = async (base64Avatar: string) => {
+    const activeUser = isOwn && currentUser ? currentUser : profile;
+    if (!activeUser) return;
+
+    try {
+      const updated = await updateProfile(activeUser.id, { avatar: base64Avatar });
+      setProfile(updated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+      toast.success('Profile avatar updated!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to update avatar');
+    }
+  };
+
+  // Handle Bio saving in About tab
+  const handleSaveBio = async () => {
+    const activeUser = isOwn && currentUser ? currentUser : profile;
+    if (!activeUser) return;
+
+    setIsSavingBio(true);
+    try {
+      const updated = await updateProfile(activeUser.id, { bio: bioText });
+      setProfile(updated);
+      queryClient.invalidateQueries({ queryKey: queryKeys.me });
+      setIsEditingBio(false);
+      toast.success('Bio updated successfully!');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Failed to save bio');
+    } finally {
+      setIsSavingBio(false);
+    }
+  };
+
+  // Insert Photo into Bio in About tab (Base64)
+  const handleBioPhotoInsert = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64Data = event.target?.result as string;
+      if (base64Data) {
+        const imageTag = `<img src="${base64Data}" alt="Inserted photo" class="my-4 rounded-xl max-h-[400px] w-full object-cover shadow-sm" />`;
+        setBioText((prev) => (prev ? `${prev}\n\n${imageTag}` : imageTag));
+        toast.success('Photo inserted into bio!');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   if (isLoading) {
     return (
       <PageTemplate>
@@ -170,7 +234,14 @@ export default function ProfilePage() {
               </div>
             </div>
             <div className="flex flex-col items-center gap-3 ml-8">
-              <div className="w-20 h-20 rounded-full overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200 shadow-sm">
+              {/* Profile Picture with hover overlay to trigger Avatar Picker */}
+              <div
+                className={`relative group w-20 h-20 rounded-full overflow-hidden bg-neutral-100 shrink-0 border border-neutral-200 shadow-sm ${
+                  isOwn ? 'cursor-pointer' : ''
+                }`}
+                onClick={() => isOwn && setIsAvatarPickerOpen(true)}
+                title={isOwn ? 'Click to change avatar' : activeUser.name}
+              >
                 <img
                   src={
                     activeUser.avatar ||
@@ -179,7 +250,13 @@ export default function ProfilePage() {
                   alt={activeUser.name}
                   className="w-full h-full object-cover"
                 />
+                {isOwn && (
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Edit size={20} className="text-white" />
+                  </div>
+                )}
               </div>
+
               {!isOwn ? (
                 <button
                   disabled={isFollowLoading}
@@ -235,7 +312,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Content Area */}
-      <div className="max-w-[1192px] mx-auto px-6 pt-8 pb-12">
+      <div className="max-w-[1192px] mx-auto px-6 pt-8 pb-16">
         {activeTab === 'home' && (
           <div className="max-w-[740px]">
             {articles.length === 0 ? (
@@ -268,28 +345,125 @@ export default function ProfilePage() {
           </div>
         )}
 
+        {/* ABOUT TAB REDESIGN */}
         {activeTab === 'about' && (
-          <div className="max-w-[480px]">
-            <div className="bg-neutral-50 border border-neutral-200/60 rounded-xl p-6 shadow-sm">
-              <h3 className="text-base font-semibold mb-3 text-neutral-900">About {activeUser.name}</h3>
-              <p className="text-[15px] text-neutral-600 leading-relaxed">
-                {activeUser.bio || 'This user has not written a bio yet.'}
-              </p>
-              <div className="mt-6 pt-4 border-t border-neutral-200/60 flex gap-6 text-sm text-neutral-500">
-                <span>
-                  <strong className="text-neutral-900 font-semibold">
-                    {(activeUser.followersCount ?? 0).toLocaleString()}
-                  </strong>{' '}
-                  followers
-                </span>
-                <span>
-                  <strong className="text-neutral-900 font-semibold">
-                    {(activeUser.followingCount ?? 0).toLocaleString()}
-                  </strong>{' '}
-                  following
-                </span>
+          <div className="max-w-[800px]">
+            {/* Screenshot 2: EDITING BIO STATE */}
+            {isEditingBio ? (
+              <div className="bg-white border border-neutral-200/80 rounded-2xl p-6 shadow-sm space-y-6 animate-fade-in">
+                <div>
+                  <h3 className="text-lg font-bold text-neutral-900 mb-2">Edit Your Bio</h3>
+                  <textarea
+                    rows={6}
+                    value={bioText}
+                    onChange={(e) => setBioText(e.target.value)}
+                    placeholder="Tell the world about yourself..."
+                    className="w-full p-4 border border-neutral-200 rounded-xl focus:outline-none focus:border-neutral-900 text-neutral-800 text-base resize-y leading-relaxed font-sans"
+                  />
+                </div>
+
+                {/* Bottom Bar matching Screenshot 2 */}
+                <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                  {/* Left: Insert photo button */}
+                  <label className="inline-flex items-center gap-2 cursor-pointer group select-none">
+                    <div className="w-8 h-8 rounded-full border border-green-600 flex items-center justify-center text-green-600 group-hover:bg-green-50 transition-colors">
+                      <Gallery size={16} variant="Linear" color="currentColor" />
+                    </div>
+                    <span className="text-sm text-green-700 group-hover:text-green-800 transition-colors">
+                      Insert photo
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBioPhotoInsert}
+                      className="hidden"
+                    />
+                  </label>
+
+                  {/* Right: Cancel & Save buttons */}
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingBio(false)}
+                      className="px-5 py-2 border border-neutral-900 text-neutral-900 rounded-full font-medium text-sm hover:bg-neutral-100 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveBio}
+                      disabled={isSavingBio}
+                      className="px-6 py-2 bg-neutral-900 text-white rounded-full font-medium text-sm hover:bg-neutral-800 transition-colors disabled:opacity-50 shadow-sm"
+                    >
+                      {isSavingBio ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : activeUser.bio ? (
+              /* VIEWING EXISTING BIO STATE */
+              <div className="bg-neutral-50/60 border border-neutral-200/80 rounded-2xl p-8 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-neutral-900">About {activeUser.name}</h3>
+                  {isOwn && (
+                    <button
+                      onClick={() => {
+                        setBioText(activeUser.bio || '');
+                        setIsEditingBio(true);
+                      }}
+                      className="flex items-center gap-1.5 text-sm font-medium text-neutral-700 hover:text-neutral-900 border border-neutral-300 rounded-full px-4 py-1.5 hover:bg-white transition-colors"
+                    >
+                      <Edit size={16} /> Edit bio
+                    </button>
+                  )}
+                </div>
+
+                <div
+                  className="text-base text-neutral-700 leading-relaxed space-y-4 prose prose-neutral max-w-none"
+                  dangerouslySetInnerHTML={{ __html: activeUser.bio }}
+                />
+
+                <div className="mt-8 pt-6 border-t border-neutral-200 flex gap-6 text-sm text-neutral-500">
+                  <span>
+                    <strong className="text-neutral-900 font-semibold">
+                      {(activeUser.followersCount ?? 0).toLocaleString()}
+                    </strong>{' '}
+                    followers
+                  </span>
+                  <span>
+                    <strong className="text-neutral-900 font-semibold">
+                      {(activeUser.followingCount ?? 0).toLocaleString()}
+                    </strong>{' '}
+                    following
+                  </span>
+                </div>
+              </div>
+            ) : (
+              /* Screenshot 1: DEFAULT EMPTY STATE */
+              <div className="bg-neutral-50/70 border border-neutral-200/70 rounded-2xl py-16 px-8 text-center max-w-2xl mx-auto shadow-xs">
+                <h2 className="text-2xl font-bold text-neutral-900 mb-4 tracking-tight">
+                  Tell the world about yourself
+                </h2>
+                <p className="text-neutral-600 text-base max-w-lg mx-auto mb-8 leading-relaxed">
+                  Here’s where you can share more about yourself: your history, work experience,
+                  accomplishments, interests, dreams, and more. You can even add images and use rich
+                  text to personalize your bio.
+                </p>
+                {isOwn ? (
+                  <button
+                    onClick={() => {
+                      setBioText('');
+                      setIsEditingBio(true);
+                    }}
+                    className="px-7 py-2.5 border border-neutral-900 text-neutral-900 rounded-full font-medium text-sm hover:bg-neutral-900 hover:text-white transition-all shadow-sm"
+                  >
+                    Get started
+                  </button>
+                ) : (
+                  <p className="text-sm text-neutral-400 italic">This user has not written a bio yet.</p>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -299,11 +473,24 @@ export default function ProfilePage() {
         <EditProfileModal
           user={activeUser}
           onClose={() => setIsEditModalOpen(false)}
+          onOpenAvatarPicker={() => {
+            setIsEditModalOpen(false);
+            setIsAvatarPickerOpen(true);
+          }}
           onUpdated={(updatedUser) => {
             setProfile(updatedUser);
             queryClient.invalidateQueries({ queryKey: queryKeys.me });
             setIsEditModalOpen(false);
           }}
+        />
+      )}
+
+      {/* Avatar Picker Modal (16 DiceBear Avatars / Local Picture Upload) */}
+      {isAvatarPickerOpen && (
+        <AvatarPickerModal
+          currentAvatar={activeUser.avatar}
+          onClose={() => setIsAvatarPickerOpen(false)}
+          onSelect={handleAvatarUpdate}
         />
       )}
     </PageTemplate>
@@ -332,8 +519,8 @@ function normalizeArticleForCard(a: ApiArticle) {
     readTime: a.read_time || 5,
     tags: a.tags || [],
     thumbnail: a.thumbnail || 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400&q=80',
-    claps: a.claps || 0,
-    comments: a.comments || 0,
+    claps: (a as any).claps || 0,
+    comments: (a as any).comments || 0,
     isMemberOnly: a.is_member_only || false,
   };
 }
@@ -342,10 +529,12 @@ function normalizeArticleForCard(a: ApiArticle) {
 function EditProfileModal({
   user,
   onClose,
+  onOpenAvatarPicker,
   onUpdated,
 }: {
   user: ApiUser;
   onClose: () => void;
+  onOpenAvatarPicker: () => void;
   onUpdated: (updated: ApiUser) => void;
 }) {
   const [name, setName] = useState(user.name || '');
@@ -414,15 +603,29 @@ function EditProfileModal({
 
           <div>
             <label className="block text-xs font-semibold text-neutral-600 uppercase tracking-wider mb-1.5">
-              Avatar Image URL
+              Avatar Image
             </label>
-            <input
-              type="url"
-              value={avatar}
-              onChange={(e) => setAvatar(e.target.value)}
-              className="w-full px-3.5 py-2.5 border border-neutral-200 rounded-lg text-sm focus:outline-none focus:border-neutral-900 transition-colors"
-              placeholder="https://example.com/avatar.png"
-            />
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                {avatar && (
+                  <img src={avatar} alt="Avatar" className="w-10 h-10 rounded-full object-cover border border-neutral-200" />
+                )}
+                <button
+                  type="button"
+                  onClick={onOpenAvatarPicker}
+                  className="px-4 py-2 text-xs font-medium border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors text-neutral-700"
+                >
+                  Choose from Avatars or Upload Photo
+                </button>
+              </div>
+              <input
+                type="text"
+                value={avatar}
+                onChange={(e) => setAvatar(e.target.value)}
+                placeholder="Or paste image URL / Base64 Data URI"
+                className="w-full px-3 py-2 border border-neutral-200 rounded-lg text-xs focus:outline-none focus:border-neutral-900"
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-neutral-100">

@@ -30,7 +30,7 @@ export class Profile {
   @Column()
   password: string; // bcrypt hash
 
-  @Column({ nullable: true })
+  @Column({ nullable: true, type: 'text' })
   avatar: string;
 
   @Column({ nullable: true, type: 'text' })

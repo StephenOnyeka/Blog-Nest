@@ -6,7 +6,7 @@
 
 import type { Article } from "./mockData";
 
-const STORE_KEY = "BlogExpress_user_articles";
+const STORE_KEY = "BlogNest_user_articles";
 
 /** Logged-in user (hardcoded for mock auth) */
 export const CURRENT_USER = {

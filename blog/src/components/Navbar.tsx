@@ -1,10 +1,20 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
-import { SearchNormal1, Edit, Notification, CloseCircle, Eye, EyeSlash } from "iconsax-react";
+import {
+  SearchNormal1,
+  Edit,
+  Notification,
+  CloseCircle,
+  Eye,
+  EyeSlash,
+} from "iconsax-react";
 import { useAuth } from "../context/AuthContext";
 import { useAuthGate } from "../context/AuthGateContext";
 import { API_BASE_URL } from "../lib/api";
-import { useUnreadNotificationCount, useMarkAllNotificationsRead } from "../hooks/queries";
+import {
+  useUnreadNotificationCount,
+  useMarkAllNotificationsRead,
+} from "../hooks/queries";
 
 export default function Navbar() {
   const [search, setSearch] = useState("");
@@ -23,7 +33,7 @@ export default function Navbar() {
           to="/"
           className="font-serif text-[26px] font-bold text-neutral-900 tracking-[-0.5px] shrink-0"
         >
-          BlogExpress
+          BlogNest
         </Link>
 
         {/* Search */}
@@ -170,7 +180,7 @@ export function AuthModal({
           <CloseCircle size={22} variant="Linear" color="currentColor" />
         </button>
         <h2 className="font-serif text-[28px] text-neutral-900 mb-8 mt-2">
-          {mode === "signin" ? "Welcome back." : "Join BlogExpress."}
+          {mode === "signin" ? "Welcome back." : "Join BlogNest."}
         </h2>
 
         {error && <div className="text-red-500 mb-2.5">{error}</div>}

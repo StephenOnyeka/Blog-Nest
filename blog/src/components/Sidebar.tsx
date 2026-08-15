@@ -42,7 +42,7 @@ export default function Sidebar() {
       <section className="mb-6">
         <div className="flex items-center gap-1.5 text-sm font-semibold text-neutral-900 mb-4">
           <TrendUp size={16} variant="Linear" color="currentColor" />
-          Trending on BlogExpress
+          Trending on BlogNest
         </div>
         {TRENDING.slice(0, 5).map((article, i) => (
           <TrendingCard key={article.id} article={article} index={i + 1} />

@@ -100,7 +100,7 @@ export default function SearchPage() {
           <input
             autoFocus
             type="text"
-            placeholder="Search BlogExpress"
+            placeholder="Search BlogNest"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);

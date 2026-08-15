@@ -189,8 +189,7 @@ export default function WritePage() {
             Your story is live!
           </h1>
           <p className="text-base text-neutral-500 max-w-[400px]">
-            "{title}" has been published to BlogExpress. Share it with the
-            world!
+            "{title}" has been published to BlogNest. Share it with the world!
           </p>
           <div className="flex gap-3 mt-2">
             <button
@@ -397,7 +396,7 @@ export default function WritePage() {
                 </div>
                 <p className="text-xs text-neutral-400 mt-1.5">
                   Note: Changes here affect how your story appears in public
-                  places like BlogExpress's homepage — not the story itself.
+                  places like BlogNest's homepage — not the story itself.
                 </p>
               </div>
 
