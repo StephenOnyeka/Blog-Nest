@@ -10,6 +10,9 @@ import { Profile } from '../entities/profile.entity';
 import { Follow } from '../entities/follow.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
+const isUuid = (str: string) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -34,14 +37,21 @@ export class UsersService {
     };
   }
 
-  async getProfile(publicId: string) {
-    const profile = await this.profileRepo.findOne({ where: { public_id: publicId } });
+  private async findProfileByIdentifier(identifier: string) {
+    const where = isUuid(identifier)
+      ? [{ public_id: identifier }, { username: identifier }]
+      : { username: identifier };
+    return this.profileRepo.findOne({ where });
+  }
+
+  async getProfile(identifier: string) {
+    const profile = await this.findProfileByIdentifier(identifier);
     if (!profile) throw new NotFoundException(`Profile not found`);
     return this.toPublicUser(profile);
   }
 
-  async updateProfile(publicId: string, updates: { name?: string; username?: string; avatar?: string; bio?: string }) {
-    const profile = await this.profileRepo.findOne({ where: { public_id: publicId } });
+  async updateProfile(identifier: string, updates: { name?: string; username?: string; avatar?: string; bio?: string }) {
+    const profile = await this.findProfileByIdentifier(identifier);
     if (!profile) throw new NotFoundException(`Profile not found`);
 
     Object.assign(profile, updates);
@@ -50,8 +60,8 @@ export class UsersService {
   }
 
   async follow(followerPublicId: string, followingPublicId: string) {
-    const follower = await this.profileRepo.findOne({ where: { public_id: followerPublicId } });
-    const following = await this.profileRepo.findOne({ where: { public_id: followingPublicId } });
+    const follower = await this.findProfileByIdentifier(followerPublicId);
+    const following = await this.findProfileByIdentifier(followingPublicId);
 
     if (!follower || !following) throw new NotFoundException('User not found');
 
@@ -78,8 +88,8 @@ export class UsersService {
   }
 
   async unfollow(followerPublicId: string, followingPublicId: string) {
-    const follower = await this.profileRepo.findOne({ where: { public_id: followerPublicId } });
-    const following = await this.profileRepo.findOne({ where: { public_id: followingPublicId } });
+    const follower = await this.findProfileByIdentifier(followerPublicId);
+    const following = await this.findProfileByIdentifier(followingPublicId);
 
     if (!follower || !following) throw new NotFoundException('User not found');
 
