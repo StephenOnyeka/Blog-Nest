@@ -152,7 +152,7 @@ export class SeedService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap() {
     const profileCount = await this.profileRepo.count();
-    if (profileCount === 0) {
+    if (profileCount === 0 || profileCount === 1) {
       console.log('🌱 Seeding initial database records...');
       await this.seed();
       console.log('✅ Database seeding complete!');
@@ -164,52 +164,73 @@ export class SeedService implements OnApplicationBootstrap {
 
     const savedProfiles: Profile[] = [];
     for (const authorData of SAMPLE_AUTHORS) {
-      const profile = this.profileRepo.create({
-        ...authorData,
-        password: defaultPasswordHash,
-      });
-      const saved = await this.profileRepo.save(profile);
-      savedProfiles.push(saved);
+      let profile = await this.profileRepo.findOne({ where: { username: authorData.username } });
+      if (!profile) {
+        profile = await this.profileRepo.save(
+          this.profileRepo.create({
+            ...authorData,
+            password: defaultPasswordHash,
+          }),
+        );
+      }
+      savedProfiles.push(profile);
     }
 
     const savedArticles: Article[] = [];
     for (const articleData of SAMPLE_ARTICLES) {
       const author = savedProfiles[articleData.authorIndex];
-      const article = this.articleRepo.create({
-        title: articleData.title,
-        subtitle: articleData.subtitle,
-        body: articleData.body,
-        read_time: articleData.read_time,
-        tags: articleData.tags,
-        thumbnail: articleData.thumbnail,
-        claps: articleData.claps,
-        comments_count: articleData.comments_count,
-        is_member_only: articleData.is_member_only,
-        is_draft: articleData.is_draft,
-        published_at: new Date(),
-        author_id: author.id,
+      let article = await this.articleRepo.findOne({
+        where: { title: articleData.title, author_id: author.id },
       });
-      const saved = await this.articleRepo.save(article);
-      savedArticles.push(saved);
+      if (!article) {
+        article = await this.articleRepo.save(
+          this.articleRepo.create({
+            title: articleData.title,
+            subtitle: articleData.subtitle,
+            body: articleData.body,
+            read_time: articleData.read_time,
+            tags: articleData.tags,
+            thumbnail: articleData.thumbnail,
+            claps: articleData.claps,
+            comments_count: articleData.comments_count,
+            is_member_only: articleData.is_member_only,
+            is_draft: articleData.is_draft,
+            published_at: new Date(),
+            author_id: author.id,
+          }),
+        );
+      }
+      savedArticles.push(article);
     }
 
-    // Seed sample notifications for the first author
-    if (savedProfiles.length > 0) {
-      const targetUser = savedProfiles[0];
-      const notification1 = this.notificationRepo.create({
-        user_id: targetUser.id,
-        type: 'follow',
-        message: 'Marcus Reid started following you.',
-        is_read: false,
-      });
-      const notification2 = this.notificationRepo.create({
-        user_id: targetUser.id,
-        type: 'clap',
-        message: 'Priya Nair clapped for your article "The Quiet Renaissance of Long-Form Writing".',
-        article_id: savedArticles[0]?.id ?? null,
-        is_read: false,
-      });
-      await this.notificationRepo.save([notification1, notification2]);
+    // Seed sample notifications for all profiles in the database
+    const allProfiles = await this.profileRepo.find();
+    for (const p of allProfiles) {
+      const existingNotifCount = await this.notificationRepo.count({ where: { user_id: p.id } });
+      if (existingNotifCount === 0) {
+        const notif1 = this.notificationRepo.create({
+          user_id: p.id,
+          type: 'follow',
+          message: 'Marcus Reid started following you.',
+          is_read: false,
+        });
+        const notif2 = this.notificationRepo.create({
+          user_id: p.id,
+          type: 'clap',
+          message: 'Priya Nair clapped for your article.',
+          article_id: savedArticles[0]?.id ?? null,
+          is_read: false,
+        });
+        const notif3 = this.notificationRepo.create({
+          user_id: p.id,
+          type: 'article_published',
+          message: 'Sarah Chen published a new story: "The Quiet Renaissance of Long-Form Writing".',
+          article_id: savedArticles[0]?.id ?? null,
+          is_read: false,
+        });
+        await this.notificationRepo.save([notif1, notif2, notif3]);
+      }
     }
+    console.log('🔔 Notifications seeded successfully for all profiles!');
   }
 }

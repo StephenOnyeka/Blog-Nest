@@ -11,22 +11,21 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { useAuthGate } from "../context/AuthGateContext";
 import { API_BASE_URL } from "../lib/api";
-import {
-  useUnreadNotificationCount,
-  useMarkAllNotificationsRead,
-} from "../hooks/queries";
+import { useUnreadNotificationCount } from "../hooks/queries";
+import NotificationsModal from "./NotificationsModal";
 
 export default function Navbar() {
   const [search, setSearch] = useState("");
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuth();
   const { openAuthModal } = useAuthGate();
   const { data: unreadData } = useUnreadNotificationCount(isLoggedIn);
-  const markAllRead = useMarkAllNotificationsRead();
   const unreadCount = unreadData?.count ?? 0;
 
   return (
-    <nav className="sticky top-0 z-[100] bg-white border-b border-neutral-200 py-3">
+    <>
+      <nav className="sticky top-0 z-[100] bg-white border-b border-neutral-200 py-3">
       <div className="flex items-center justify-between max-w-[1192px] mx-auto px-6 gap-4">
         {/* Logo */}
         <Link
@@ -63,9 +62,9 @@ export default function Navbar() {
                 <span>Write</span>
               </Link>
               <button
-                className="w-9 h-9 rounded-full overflow-hidden cursor-pointer bg-neutral-100 flex items-center justify-center shrink-0 relative"
+                className="w-9 h-9 rounded-full overflow-hidden cursor-pointer bg-neutral-100 flex items-center justify-center shrink-0 relative hover:bg-neutral-200 transition-colors"
                 aria-label="Notifications"
-                onClick={() => markAllRead.mutate()}
+                onClick={() => setIsNotifOpen(true)}
               >
                 <Notification
                   size={20}
@@ -74,7 +73,7 @@ export default function Navbar() {
                   color="currentColor"
                 />
                 {unreadCount > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                 )}
               </button>
               <Link
@@ -118,6 +117,15 @@ export default function Navbar() {
         </div>
       </div>
     </nav>
+
+    {/* Notifications Modal */}
+    {isLoggedIn && (
+      <NotificationsModal
+        isOpen={isNotifOpen}
+        onClose={() => setIsNotifOpen(false)}
+      />
+    )}
+  </>
   );
 }
 

@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import { Notification } from '../entities/notification.entity';
 import { Profile } from '../entities/profile.entity';
 import { NotificationsGateway } from './notifications.gateway';
@@ -21,6 +21,7 @@ export class NotificationsService {
       type: n.type,
       message: n.message,
       is_read: n.is_read,
+      read_at: n.read_at,
       article_id: n.article?.public_id ?? null,
       created_at: n.created_at,
       ...(n.article ? {
@@ -32,9 +33,29 @@ export class NotificationsService {
     };
   }
 
+  /** Automatically purge read notifications older than 30 days from the database */
+  async cleanupOldReadNotifications() {
+    try {
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      await this.notificationRepo
+        .createQueryBuilder()
+        .delete()
+        .from(Notification)
+        .where('is_read = true AND (read_at < :thirtyDaysAgo OR (read_at IS NULL AND created_at < :thirtyDaysAgo))', {
+          thirtyDaysAgo,
+        })
+        .execute();
+    } catch (err) {
+      console.error('Failed to cleanup 30-day old read notifications:', err);
+    }
+  }
+
   async getForUser(userPublicId: string) {
     const profile = await this.profileRepo.findOne({ where: { public_id: userPublicId } });
     if (!profile) throw new NotFoundException('User not found');
+
+    // Automatically trigger cleanup of read notifications older than 30 days
+    await this.cleanupOldReadNotifications();
 
     const notifications = await this.notificationRepo.find({
       where: { user_id: profile.id },
@@ -60,7 +81,11 @@ export class NotificationsService {
     const profile = await this.profileRepo.findOne({ where: { public_id: userPublicId } });
     if (!profile) throw new NotFoundException('User not found');
 
-    await this.notificationRepo.update({ user_id: profile.id, is_read: false }, { is_read: true });
+    const now = new Date();
+    await this.notificationRepo.update(
+      { user_id: profile.id, is_read: false },
+      { is_read: true, read_at: now },
+    );
     return { success: true };
   }
 
@@ -71,7 +96,21 @@ export class NotificationsService {
     if (!notification) throw new NotFoundException('Notification not found');
 
     notification.is_read = true;
+    notification.read_at = new Date();
     await this.notificationRepo.save(notification);
+    return { success: true };
+  }
+
+  async deleteNotification(userPublicId: string, notificationPublicId: string) {
+    const profile = await this.profileRepo.findOne({ where: { public_id: userPublicId } });
+    if (!profile) throw new NotFoundException('User not found');
+
+    const notification = await this.notificationRepo.findOne({
+      where: { public_id: notificationPublicId, user_id: profile.id },
+    });
+    if (!notification) throw new NotFoundException('Notification not found');
+
+    await this.notificationRepo.remove(notification);
     return { success: true };
   }
 

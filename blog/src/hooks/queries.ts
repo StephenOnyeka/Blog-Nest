@@ -22,6 +22,7 @@ import {
   getUnreadNotificationCount,
   markAllNotificationsRead,
   markNotificationRead,
+  deleteNotification,
   subscribe,
   type GetArticlesParams,
   type SubscribePayload,
@@ -138,6 +139,17 @@ export function useMarkNotificationRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => markNotificationRead(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.unreadNotificationCount });
+      qc.invalidateQueries({ queryKey: queryKeys.notifications });
+    },
+  });
+}
+
+export function useDeleteNotification() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteNotification(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.unreadNotificationCount });
       qc.invalidateQueries({ queryKey: queryKeys.notifications });

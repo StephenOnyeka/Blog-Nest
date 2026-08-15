@@ -31,7 +31,10 @@ export class Notification {
   @Column({ default: false })
   is_read: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
+  read_at: Date | null;
+
+  @Column({ type: 'int', nullable: true })
   article_id: number | null;
 
   @ManyToOne(() => Profile, { onDelete: 'CASCADE' })

@@ -242,6 +242,14 @@ export const markNotificationRead = async (
   return res.data;
 };
 
+/** Delete a single notification */
+export const deleteNotification = async (
+  id: string,
+): Promise<{ success: boolean }> => {
+  const res = await api.delete<{ success: boolean }>(`/notifications/${id}`);
+  return res.data;
+};
+
 // ─── Subscriptions ─────────────────────────────────────────────────────────────
 
 export interface SubscribePayload {
