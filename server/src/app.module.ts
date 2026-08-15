@@ -7,9 +7,13 @@ import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ArticlesModule } from './articles/articles.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { Profile } from './entities/profile.entity';
 import { Follow } from './entities/follow.entity';
 import { Article } from './entities/article.entity';
+import { Notification } from './entities/notification.entity';
+import { Subscription } from './entities/subscription.entity';
 
 @Module({
   imports: [
@@ -21,7 +25,7 @@ import { Article } from './entities/article.entity';
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
         ssl: { rejectUnauthorized: false },
-        entities: [Profile, Follow, Article],
+        entities: [Profile, Follow, Article, Notification, Subscription],
         migrations: ['dist/migrations/*.js'],
         synchronize: false,
       }),
@@ -29,6 +33,8 @@ import { Article } from './entities/article.entity';
     AuthModule,
     UsersModule,
     ArticlesModule,
+    NotificationsModule,
+    SubscriptionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -17,33 +17,35 @@ export class ArticlesService {
     return {
       id: article.public_id,
       title: article.title,
-      subtitle: article.subtitle ?? '',
+      subtitle: article.subtitle ?? null,
       body: article.body,
-      thumbnail: article.thumbnail ?? '',
+      thumbnail: article.thumbnail ?? null,
       tags: article.tags,
-      readTime: article.read_time,
-      isMemberOnly: article.is_member_only,
-      isDraft: article.is_draft,
-      publishedAt: article.published_at ? article.published_at.toISOString() : null,
+      read_time: article.read_time,
+      is_member_only: article.is_member_only,
+      is_draft: article.is_draft,
+      published_at: article.published_at ? article.published_at.toISOString() : null,
+      author_id: article.author?.public_id ?? null,
       claps: article.claps,
       comments: article.comments_count,
+      created_at: article.created_at,
+      updated_at: article.updated_at,
       author: {
-        id: article.author.public_id,
-        name: article.author.name,
-        username: article.author.username,
-        avatar: article.author.avatar ?? '',
-        bio: article.author.bio ?? '',
-        followers: article.author.followers_count,
-        following: article.author.following_count,
+        id: article.author?.public_id,
+        name: article.author?.name,
+        username: article.author?.username,
+        avatar: article.author?.avatar ?? null,
       },
     };
   }
 
-  async findAll(tag?: string, authorPublicId?: string) {
+  async findAll(tag?: string, authorPublicId?: string, page = 1, limit = 10) {
     const query = this.articleRepo.createQueryBuilder('article')
       .leftJoinAndSelect('article.author', 'author')
       .where('article.is_draft = :isDraft', { isDraft: false })
-      .orderBy('article.created_at', 'DESC');
+      .orderBy('article.created_at', 'DESC')
+      .skip((page - 1) * limit)
+      .take(limit);
 
     if (tag) {
       query.andWhere(':tag = ANY(article.tags)', { tag });
@@ -53,8 +55,13 @@ export class ArticlesService {
       query.andWhere('author.public_id = :authorPublicId', { authorPublicId });
     }
 
-    const articles = await query.getMany();
-    return articles.map(a => this.mapToFrontendArticle(a));
+    const [articles, total] = await query.getManyAndCount();
+    return {
+      articles: articles.map(a => this.mapToFrontendArticle(a)),
+      total,
+      page,
+      limit,
+    };
   }
 
   async findOne(publicId: string) {

@@ -7,8 +7,13 @@ export class ArticlesController {
   constructor(private readonly articlesService: ArticlesService) {}
 
   @Get()
-  async findAll(@Query('tag') tag?: string, @Query('authorId') authorId?: string) {
-    return this.articlesService.findAll(tag, authorId);
+  async findAll(
+    @Query('tag') tag?: string,
+    @Query('author_id') authorId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.articlesService.findAll(tag, authorId, page ? +page : 1, limit ? +limit : 10);
   }
 
   @Get(':id')
