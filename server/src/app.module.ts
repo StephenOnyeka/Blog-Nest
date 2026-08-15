@@ -9,6 +9,7 @@ import { UsersModule } from './users/users.module';
 import { ArticlesModule } from './articles/articles.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { SeedModule } from './seed/seed.module';
 import { Profile } from './entities/profile.entity';
 import { Follow } from './entities/follow.entity';
 import { Article } from './entities/article.entity';
@@ -35,6 +36,7 @@ import { Subscription } from './entities/subscription.entity';
     ArticlesModule,
     NotificationsModule,
     SubscriptionsModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [AppService],
