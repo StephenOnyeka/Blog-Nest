@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as dotenv from 'dotenv';
 import { Profile } from './entities/profile.entity';
 import { Follow } from './entities/follow.entity';
+import { Article } from './entities/article.entity';
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ export default new DataSource({
   type: 'postgres',
   url: configService.get<string>('DATABASE_URL'),
   ssl: { rejectUnauthorized: false },
-  entities: [Profile, Follow],
+  entities: [Profile, Follow, Article],
   migrations: ['src/migrations/*.ts'],
   synchronize: false,
 });
