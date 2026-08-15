@@ -1,43 +1,67 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
-import { SupabaseService } from '../supabase/supabase.service';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { Profile } from '../entities/profile.entity';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    @InjectRepository(Profile)
+    private readonly profileRepo: Repository<Profile>,
+    private readonly jwtService: JwtService,
+  ) {}
 
-  async register(email: string, password: string, name: string) {
-    const supabase = this.supabaseService.getClient();
-    
-    // Register the user with Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          name,
-        },
-      },
+  private toPublicUser(profile: Profile) {
+    return {
+      id: profile.public_id,
+      name: profile.name,
+      username: profile.username,
+      email: profile.email,
+      avatar: profile.avatar ?? null,
+      bio: profile.bio ?? null,
+      followersCount: profile.followers_count,
+      followingCount: profile.following_count,
+      created_at: profile.created_at,
+    };
+  }
+
+  async register(name: string, username: string, email: string, password: string) {
+    const existing = await this.profileRepo.findOne({
+      where: [{ email }, { username }],
     });
-
-    if (error) {
-      throw new BadRequestException(error.message);
+    if (existing) {
+      throw new ConflictException('Email or username is already taken');
     }
 
-    return data;
+    const hashed = await bcrypt.hash(password, 10);
+    const profile = this.profileRepo.create({ name, username, email, password: hashed });
+    await this.profileRepo.save(profile);
+
+    const token = this.jwtService.sign({ sub: profile.public_id, email: profile.email });
+    return { token, user: this.toPublicUser(profile) };
   }
 
   async login(email: string, password: string) {
-    const supabase = this.supabaseService.getClient();
-    
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const profile = await this.profileRepo.findOne({ where: { email } });
+    if (!profile) throw new UnauthorizedException('Invalid email or password');
 
-    if (error) {
-      throw new UnauthorizedException(error.message);
-    }
+    const valid = await bcrypt.compare(password, profile.password);
+    if (!valid) throw new UnauthorizedException('Invalid email or password');
 
-    return data;
+    const token = this.jwtService.sign({ sub: profile.public_id, email: profile.email });
+    return { token, user: this.toPublicUser(profile) };
+  }
+
+  async getMe(publicId: string) {
+    const profile = await this.profileRepo.findOne({ where: { public_id: publicId } });
+    if (!profile) throw new UnauthorizedException('User not found');
+    return { user: this.toPublicUser(profile) };
   }
 }

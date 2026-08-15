@@ -9,12 +9,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('SUPABASE_SECRET_KEY') || 'secret',
+      secretOrKey: configService.get<string>('JWT_SECRET') || 'fallback-secret',
     });
   }
 
   async validate(payload: any) {
-    // payload is the decoded JWT. For Supabase, payload.sub is the user ID.
-    return { userId: payload.sub, email: payload.email, role: payload.role };
+    // payload.sub is the profile.public_id (UUID)
+    return { userId: payload.sub, email: payload.email };
   }
 }

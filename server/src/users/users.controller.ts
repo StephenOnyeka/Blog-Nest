@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Param, Body, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
+import { Controller, Get, Patch, Put, Post, Delete, Param, Body, UseGuards, Request, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -13,8 +13,16 @@ export class UsersController {
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  async updateProfile(@Param('id') id: string, @Body() body: any, @Request() req: any) {
-    // Only allow users to update their own profile
+  async patchProfile(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+    if (req.user.userId !== id) {
+      throw new UnauthorizedException('You can only update your own profile');
+    }
+    return this.usersService.updateProfile(id, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put(':id')
+  async putProfile(@Param('id') id: string, @Body() body: any, @Request() req: any) {
     if (req.user.userId !== id) {
       throw new UnauthorizedException('You can only update your own profile');
     }
@@ -25,6 +33,13 @@ export class UsersController {
   @Post(':authorId/follow')
   async followUser(@Param('authorId') authorId: string, @Request() req: any) {
     const followerId = req.user.userId;
-    return this.usersService.toggleFollow(followerId, authorId);
+    return this.usersService.follow(followerId, authorId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Delete(':authorId/follow')
+  async unfollowUser(@Param('authorId') authorId: string, @Request() req: any) {
+    const followerId = req.user.userId;
+    return this.usersService.unfollow(followerId, authorId);
   }
 }

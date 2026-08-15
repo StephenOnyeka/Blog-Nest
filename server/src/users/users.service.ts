@@ -1,97 +1,89 @@
-import { Injectable, NotFoundException, InternalServerErrorException } from '@nestjs/common';
-import { SupabaseService } from '../supabase/supabase.service';
+import {
+  Injectable,
+  NotFoundException,
+  InternalServerErrorException,
+  ConflictException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Profile } from '../entities/profile.entity';
+import { Follow } from '../entities/follow.entity';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly supabaseService: SupabaseService) {}
+  constructor(
+    @InjectRepository(Profile)
+    private readonly profileRepo: Repository<Profile>,
+    @InjectRepository(Follow)
+    private readonly followRepo: Repository<Follow>,
+  ) {}
 
-  async getProfile(id: string) {
-    const supabase = this.supabaseService.getClient();
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error || !data) {
-      throw new NotFoundException(`Profile with ID ${id} not found`);
-    }
-
-    return data;
+  private toPublicUser(profile: Profile) {
+    return {
+      id: profile.public_id,
+      name: profile.name,
+      username: profile.username,
+      email: profile.email,
+      avatar: profile.avatar ?? null,
+      bio: profile.bio ?? null,
+      followersCount: profile.followers_count,
+      followingCount: profile.following_count,
+      created_at: profile.created_at,
+    };
   }
 
-  async updateProfile(id: string, updates: any) {
-    const supabase = this.supabaseService.getClient();
-    const { data, error } = await supabase
-      .from('profiles')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      throw new InternalServerErrorException(error.message);
-    }
-
-    return data;
+  async getProfile(publicId: string) {
+    const profile = await this.profileRepo.findOne({ where: { public_id: publicId } });
+    if (!profile) throw new NotFoundException(`Profile not found`);
+    return this.toPublicUser(profile);
   }
 
-  async toggleFollow(followerId: string, followingId: string) {
-    const supabase = this.supabaseService.getClient();
+  async updateProfile(publicId: string, updates: { name?: string; username?: string; avatar?: string; bio?: string }) {
+    const profile = await this.profileRepo.findOne({ where: { public_id: publicId } });
+    if (!profile) throw new NotFoundException(`Profile not found`);
 
-    // Check if already following
-    const { data: existingFollow } = await supabase
-      .from('follows')
-      .select('*')
-      .eq('follower_id', followerId)
-      .eq('following_id', followingId)
-      .single();
-
-    if (existingFollow) {
-      // Unfollow
-      const { error } = await supabase
-        .from('follows')
-        .delete()
-        .eq('follower_id', followerId)
-        .eq('following_id', followingId);
-
-      if (error) throw new InternalServerErrorException(error.message);
-
-      // Decrement counts
-      await this.updateFollowCounts(followerId, followingId, -1);
-      
-      return { following: false };
-    } else {
-      // Follow
-      const { error } = await supabase
-        .from('follows')
-        .insert({ follower_id: followerId, following_id: followingId });
-
-      if (error) throw new InternalServerErrorException(error.message);
-
-      // Increment counts
-      await this.updateFollowCounts(followerId, followingId, 1);
-
-      return { following: true };
-    }
+    Object.assign(profile, updates);
+    await this.profileRepo.save(profile);
+    return this.toPublicUser(profile);
   }
 
-  private async updateFollowCounts(followerId: string, followingId: string, increment: number) {
-    const supabase = this.supabaseService.getClient();
-    
-    // In a real production app with Supabase, this is better handled by a Postgres trigger
-    // or an RPC call to avoid race conditions. For now, we do it via RPC if we assume one exists,
-    // otherwise we fetch and update (which has race conditions). 
-    // We'll use the fetch-and-update approach for simplicity as per the plan.
+  async follow(followerPublicId: string, followingPublicId: string) {
+    const follower = await this.profileRepo.findOne({ where: { public_id: followerPublicId } });
+    const following = await this.profileRepo.findOne({ where: { public_id: followingPublicId } });
 
-    const { data: follower } = await supabase.from('profiles').select('following_count').eq('id', followerId).single();
-    if (follower) {
-      await supabase.from('profiles').update({ following_count: (follower.following_count || 0) + increment }).eq('id', followerId);
-    }
+    if (!follower || !following) throw new NotFoundException('User not found');
 
-    const { data: following } = await supabase.from('profiles').select('followers_count').eq('id', followingId).single();
-    if (following) {
-      await supabase.from('profiles').update({ followers_count: (following.followers_count || 0) + increment }).eq('id', followingId);
-    }
+    const existing = await this.followRepo.findOne({
+      where: { follower_id: follower.id, following_id: following.id },
+    });
+    if (existing) throw new ConflictException('Already following this user');
+
+    const follow = this.followRepo.create({ follower_id: follower.id, following_id: following.id });
+    await this.followRepo.save(follow);
+
+    // Update counts atomically using query builder
+    await this.profileRepo.increment({ id: follower.id }, 'following_count', 1);
+    await this.profileRepo.increment({ id: following.id }, 'followers_count', 1);
+
+    return { message: 'Followed successfully' };
+  }
+
+  async unfollow(followerPublicId: string, followingPublicId: string) {
+    const follower = await this.profileRepo.findOne({ where: { public_id: followerPublicId } });
+    const following = await this.profileRepo.findOne({ where: { public_id: followingPublicId } });
+
+    if (!follower || !following) throw new NotFoundException('User not found');
+
+    const follow = await this.followRepo.findOne({
+      where: { follower_id: follower.id, following_id: following.id },
+    });
+    if (!follow) throw new NotFoundException('Not following this user');
+
+    await this.followRepo.remove(follow);
+
+    await this.profileRepo.decrement({ id: follower.id }, 'following_count', 1);
+    await this.profileRepo.decrement({ id: following.id }, 'followers_count', 1);
+
+    return { message: 'Unfollowed successfully' };
   }
 }

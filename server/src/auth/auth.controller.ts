@@ -8,8 +8,8 @@ export class AuthController {
 
   @Post('register')
   async register(@Body() body: any) {
-    const { email, password, name } = body;
-    return this.authService.register(email, password, name);
+    const { name, username, email, password } = body;
+    return this.authService.register(name, username, email, password);
   }
 
   @Post('login')
@@ -20,7 +20,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  getProfile(@Request() req: any) {
-    return req.user;
+  async getProfile(@Request() req: any) {
+    return this.authService.getMe(req.user.userId);
   }
 }
