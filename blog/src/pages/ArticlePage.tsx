@@ -49,7 +49,7 @@ export default function ArticlePage() {
 
   if (!article) {
     return (
-      <PageTemplate>
+      <PageTemplate hideSidebar>
         <div className="text-center py-20 px-6">
           <h1 className="text-3xl font-bold mb-4">Article not found</h1>
           <button
@@ -86,7 +86,7 @@ export default function ArticlePage() {
   ).slice(0, 3);
 
   return (
-    <PageTemplate>
+    <PageTemplate hideSidebar>
       {/* Reading progress bar */}
       <div
         className="fixed top-0 left-0 h-0.5 bg-neutral-900 z-[200] transition-all duration-100"

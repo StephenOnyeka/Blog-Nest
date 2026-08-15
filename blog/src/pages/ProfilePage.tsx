@@ -178,7 +178,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <PageTemplate>
+      <PageTemplate hideSidebar>
         <div className="max-w-[1192px] mx-auto px-6 py-16 flex justify-center items-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-neutral-900"></div>
         </div>
@@ -190,7 +190,7 @@ export default function ProfilePage() {
 
   if (!activeUser) {
     return (
-      <PageTemplate>
+      <PageTemplate hideSidebar>
         <div className="text-center py-20 px-6">
           <h1 className="text-3xl font-bold mb-4 text-neutral-900">User not found</h1>
           <p className="text-neutral-500 mb-6">The author profile you are looking for does not exist.</p>
@@ -203,7 +203,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <PageTemplate>
+    <PageTemplate hideSidebar>
       {/* Profile header */}
       <div className="border-b border-neutral-200 bg-white">
         <div className="max-w-[1192px] mx-auto px-6 py-10">

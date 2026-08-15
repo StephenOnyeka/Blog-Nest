@@ -28,7 +28,7 @@ import { Subscription } from './entities/subscription.entity';
         ssl: { rejectUnauthorized: false },
         entities: [Profile, Follow, Article, Notification, Subscription],
         migrations: ['dist/migrations/*.js'],
-        synchronize: false,
+        synchronize: true,
       }),
     }),
     AuthModule,
@@ -46,14 +46,17 @@ export class AppModule implements OnModuleInit {
 
   async onModuleInit() {
     try {
-      if (this.dataSource.isInitialized) {
-        console.log('✅ Successfully connected to the database');
-      } else {
+      if (!this.dataSource.isInitialized) {
         await this.dataSource.initialize();
-        console.log('✅ Successfully connected to the database');
       }
+      console.log('✅ Successfully connected to the database');
+
+      // Ensure read_at column exists in notifications table
+      await this.dataSource.query(
+        `ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "read_at" TIMESTAMPTZ;`
+      );
     } catch (error: any) {
-      console.error('❌ Failed to connect to the database:', error?.message ?? error);
+      console.error('❌ Failed to initialize database / columns:', error?.message ?? error);
     }
   }
 }

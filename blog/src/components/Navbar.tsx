@@ -13,10 +13,12 @@ import { useAuthGate } from "../context/AuthGateContext";
 import { API_BASE_URL } from "../lib/api";
 import { useUnreadNotificationCount } from "../hooks/queries";
 import NotificationsModal from "./NotificationsModal";
+import ProfileMenuDropdown from "./ProfileMenuDropdown";
 
 export default function Navbar() {
   const [search, setSearch] = useState("");
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuth();
   const { openAuthModal } = useAuthGate();
@@ -76,20 +78,28 @@ export default function Navbar() {
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
                 )}
               </button>
-              <Link
-                to={`/profile/${user?.username}`}
-                className="w-9 h-9 rounded-full overflow-hidden cursor-pointer bg-neutral-100 flex items-center justify-center shrink-0"
-                aria-label="Profile"
-              >
-                <img
-                  className="w-full h-full object-cover"
-                  src={
-                    user?.avatar ||
-                    "https://api.dicebear.com/9.x/avataaars/svg?seed=me&backgroundColor=ffd5dc"
-                  }
-                  alt="Your avatar"
+              {/* Profile avatar — toggles dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsProfileMenuOpen((v) => !v)}
+                  className="w-9 h-9 rounded-full overflow-hidden cursor-pointer bg-neutral-100 flex items-center justify-center shrink-0 ring-2 ring-transparent hover:ring-neutral-300 transition-all"
+                  aria-label="Open profile menu"
+                  aria-expanded={isProfileMenuOpen}
+                >
+                  <img
+                    className="w-full h-full object-cover"
+                    src={
+                      user?.avatar ||
+                      "https://api.dicebear.com/9.x/avataaars/svg?seed=me&backgroundColor=ffd5dc"
+                    }
+                    alt="Your avatar"
+                  />
+                </button>
+                <ProfileMenuDropdown
+                  isOpen={isProfileMenuOpen}
+                  onClose={() => setIsProfileMenuOpen(false)}
                 />
-              </Link>
+              </div>
             </>
           ) : (
             <>

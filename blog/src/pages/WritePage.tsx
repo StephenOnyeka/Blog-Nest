@@ -182,7 +182,7 @@ export default function WritePage() {
   /* ── Published success screen ──────────────────── */
   if (published) {
     return (
-      <PageTemplate showFooter={false}>
+      <PageTemplate showFooter={false} hideSidebar>
         <div className="flex flex-col items-center justify-center min-h-[70vh] gap-4 text-center px-6">
           <div className="text-6xl">🎉</div>
           <h1 className="text-[28px] font-extrabold text-neutral-900 tracking-[-0.5px]">
@@ -212,7 +212,7 @@ export default function WritePage() {
 
   /* ── Editor ─────────────────────────────────────── */
   return (
-    <PageTemplate showFooter={false}>
+    <PageTemplate showFooter={false} hideSidebar>
       {/* Top bar */}
       <div className="sticky top-0 z-[100] bg-white border-b border-neutral-100 px-6 flex items-center justify-between h-[57px] gap-4">
         <button

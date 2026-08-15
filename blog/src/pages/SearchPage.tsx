@@ -87,7 +87,7 @@ export default function SearchPage() {
   const matchedAuthors = q ? authorFuse.search(q).map((r) => r.item) : [];
 
   return (
-    <PageTemplate>
+    <PageTemplate hideSidebar>
       <div className="max-w-[1192px] mx-auto px-6 pt-8 pb-12">
         {/* Search input */}
         <div className="flex items-center gap-3 bg-neutral-50 rounded-full px-5 py-3 mb-8 max-w-[600px]">

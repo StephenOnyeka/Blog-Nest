@@ -38,10 +38,11 @@ export class NotificationsService {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
       await this.notificationRepo
-        .createQueryBuilder()
+        .createQueryBuilder('notification')
         .delete()
         .from(Notification)
-        .where('is_read = true AND (read_at < :thirtyDaysAgo OR (read_at IS NULL AND created_at < :thirtyDaysAgo))', {
+        .where('is_read = :isRead AND (read_at < :thirtyDaysAgo OR (read_at IS NULL AND created_at < :thirtyDaysAgo))', {
+          isRead: true,
           thirtyDaysAgo,
         })
         .execute();

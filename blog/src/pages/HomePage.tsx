@@ -19,8 +19,8 @@ export default function HomePage() {
   return (
     <PageTemplate>
       {/* Topic bar */}
-      <div className="border-b border-neutral-200 py-3 bg-white overflow-x-auto scrollbar-none">
-        <div className="flex items-center gap-1 max-w-[1192px] mx-auto px-6 whitespace-nowrap">
+      <div className="border-b border-neutral-200 pb-3 bg-white overflow-x-auto scrollbar-none -mx-6 px-6">
+        <div className="flex items-center gap-1 whitespace-nowrap">
           <button
             className="px-2 py-1.5 rounded-full text-sm text-neutral-500 transition-all hover:bg-neutral-100 hover:text-neutral-900 shrink-0 cursor-pointer"
             aria-label="Add topics"
@@ -45,7 +45,7 @@ export default function HomePage() {
       </div>
 
       {/* Main grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 max-w-[1192px] mx-auto px-6 py-8">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-10 py-8">
         {/* Feed */}
         <div className="flex flex-col">
           {filteredArticles.length === 0 ? (
@@ -65,7 +65,7 @@ export default function HomePage() {
           )}
         </div>
 
-        {/* Sidebar */}
+        {/* Right sidebar */}
         <Sidebar />
       </div>
     </PageTemplate>
