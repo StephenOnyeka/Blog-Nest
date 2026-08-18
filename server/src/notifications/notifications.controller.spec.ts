@@ -64,6 +64,9 @@ describe('NotificationsController', () => {
 
   it('deleteOne should call service.deleteNotification', async () => {
     await controller.deleteOne(mockReq, 'notif-uuid-1');
-    expect(serviceMock.deleteNotification).toHaveBeenCalledWith('user-uuid-1', 'notif-uuid-1');
+    expect(serviceMock.deleteNotification).toHaveBeenCalledWith(
+      'user-uuid-1',
+      'notif-uuid-1',
+    );
   });
 });

@@ -17,7 +17,8 @@ import {
   type ApiUser,
   type ApiArticle,
 } from '../data/api';
-import { queryKeys } from '../hooks/queries';
+import { useMyBookmarks, queryKeys } from '../hooks/queries';
+import { normalizeApiArticle } from '../data/normalize';
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -25,6 +26,16 @@ export default function ProfilePage() {
   const { user: currentUser, isLoggedIn } = useAuth();
   const { openAuthModal } = useAuthGate();
   const queryClient = useQueryClient();
+
+  // Determine if viewing own profile
+  const isOwn =
+    username === 'me' ||
+    (currentUser && (username === currentUser.username || username === currentUser.id));
+
+  // Bookmarked articles (only meaningful on the user's own profile)
+  const { data: bookmarkedArticles, isLoading: bookmarksLoading } = useMyBookmarks(
+    isOwn && isLoggedIn && activeTab === 'lists',
+  );
 
   const [profile, setProfile] = useState<ApiUser | null>(null);
   const [articles, setArticles] = useState<ApiArticle[]>([]);
@@ -38,11 +49,6 @@ export default function ProfilePage() {
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioText, setBioText] = useState('');
   const [isSavingBio, setIsSavingBio] = useState(false);
-
-  // Determine if viewing own profile
-  const isOwn =
-    username === 'me' ||
-    (currentUser && (username === currentUser.username || username === currentUser.id));
 
   // Load profile details
   useEffect(() => {
@@ -331,7 +337,7 @@ export default function ProfilePage() {
             ) : (
               <div className="flex flex-col space-y-6">
                 {articles.map((article) => (
-                  <ArticleCard key={article.id} article={normalizeArticleForCard(article)} />
+                  <ArticleCard key={article.id} article={normalizeApiArticle(article)} />
                 ))}
               </div>
             )}
@@ -339,10 +345,36 @@ export default function ProfilePage() {
         )}
 
         {activeTab === 'lists' && (
-          <div className="max-w-[740px] text-center py-16 text-neutral-500 bg-neutral-50 rounded-xl border border-neutral-100">
-            <Save2Icon />
-            <p className="text-base mt-4 font-medium text-neutral-700">No saved lists yet</p>
-            <p className="text-sm text-neutral-400 mt-1">Bookmarked stories will appear here.</p>
+          <div className="max-w-[740px]">
+            {bookmarksLoading ? (
+              <div className="flex justify-center py-16">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
+              </div>
+            ) : !isLoggedIn || !isOwn ? (
+              <div className="text-center py-16 text-neutral-500 bg-neutral-50 rounded-xl border border-neutral-100">
+                <Save2Icon />
+                <p className="text-base mt-4 font-medium text-neutral-700">No saved lists yet</p>
+                <p className="text-sm text-neutral-400 mt-1">Bookmarked stories will appear here.</p>
+              </div>
+            ) : bookmarkedArticles && bookmarkedArticles.length > 0 ? (
+              <div className="flex flex-col space-y-6">
+                {bookmarkedArticles.map((article) => (
+                  <ArticleCard
+                    key={article.id}
+                    article={normalizeApiArticle(article)}
+                    initialSaved
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 text-neutral-500 bg-neutral-50 rounded-xl border border-neutral-100">
+                <Save2Icon />
+                <p className="text-base mt-4 font-medium text-neutral-700">No saved stories yet</p>
+                <p className="text-sm text-neutral-400 mt-1">
+                  Tap the bookmark icon on any story to save it here.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
@@ -496,34 +528,6 @@ export default function ProfilePage() {
       )}
     </PageTemplate>
   );
-}
-
-/** Helper to map ApiArticle to expected card shape */
-function normalizeArticleForCard(a: ApiArticle) {
-  return {
-    id: a.id,
-    title: a.title,
-    subtitle: a.subtitle || '',
-    body: a.body,
-    author: {
-      id: a.author?.id || a.author_id,
-      name: a.author?.name || 'Author',
-      username: a.author?.username || 'author',
-      avatar: a.author?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${a.author?.username || 'author'}`,
-      bio: '',
-      followers: 0,
-      following: 0,
-    },
-    publishedAt: a.published_at
-      ? new Date(a.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      : 'Draft',
-    readTime: a.read_time || 5,
-    tags: a.tags || [],
-    thumbnail: a.thumbnail || 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400&q=80',
-    claps: (a as any).claps || 0,
-    comments: (a as any).comments || 0,
-    isMemberOnly: a.is_member_only || false,
-  };
 }
 
 /** Edit Profile Modal Component */

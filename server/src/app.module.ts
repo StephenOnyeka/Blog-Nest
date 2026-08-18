@@ -13,6 +13,8 @@ import { SeedModule } from './seed/seed.module';
 import { Profile } from './entities/profile.entity';
 import { Follow } from './entities/follow.entity';
 import { Article } from './entities/article.entity';
+import { Comment } from './entities/comment.entity';
+import { Bookmark } from './entities/bookmark.entity';
 import { Notification } from './entities/notification.entity';
 import { Subscription } from './entities/subscription.entity';
 
@@ -26,7 +28,15 @@ import { Subscription } from './entities/subscription.entity';
         type: 'postgres',
         url: configService.get<string>('DATABASE_URL'),
         ssl: { rejectUnauthorized: false },
-        entities: [Profile, Follow, Article, Notification, Subscription],
+        entities: [
+          Profile,
+          Follow,
+          Article,
+          Comment,
+          Bookmark,
+          Notification,
+          Subscription,
+        ],
         migrations: ['dist/migrations/*.js'],
         synchronize: true,
       }),
@@ -53,11 +63,13 @@ export class AppModule implements OnModuleInit {
 
       // Ensure read_at column exists in notifications table
       await this.dataSource.query(
-        `ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "read_at" TIMESTAMPTZ;`
+        `ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "read_at" TIMESTAMPTZ;`,
       );
     } catch (error: any) {
-      console.error('❌ Failed to initialize database / columns:', error?.message ?? error);
+      console.error(
+        '❌ Failed to initialize database / columns:',
+        error?.message ?? error,
+      );
     }
   }
 }
-

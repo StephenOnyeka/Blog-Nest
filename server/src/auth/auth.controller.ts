@@ -1,5 +1,18 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiBody,
+} from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
@@ -52,7 +65,10 @@ export class AuthController {
   @Get('me')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get profile of current authenticated user' })
-  @ApiResponse({ status: 200, description: 'Returns authenticated user profile' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns authenticated user profile',
+  })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async getProfile(@Request() req: any) {
     return this.authService.getMe(req.user.userId);

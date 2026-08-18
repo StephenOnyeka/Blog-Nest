@@ -15,11 +15,15 @@ import {
   saveArticle,
   getArticleById,
   createDraftArticle,
+  deleteArticle,
   estimateReadTime,
   wordCount,
   CURRENT_USER,
 } from "../data/articleStore";
 import type { Article } from "../data/mockData";
+import { useAuth } from "../context/AuthContext";
+import { createArticle } from "../data/api";
+import { toast } from "sonner";
 
 /* ─── Quill toolbar modules ─────────────────────── */
 const MODULES = {
@@ -76,6 +80,20 @@ export default function WritePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
+  const { user, isLoggedIn } = useAuth();
+
+  // Active author = logged-in user (avatar from their profile / avatar modal)
+  const activeAuthor = isLoggedIn && user
+    ? {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        avatar: user.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username || 'me'}`,
+        bio: user.bio || "",
+        followers: user.followersCount || 0,
+        following: user.followingCount || 0,
+      }
+    : CURRENT_USER;
 
   // Load draft from store or create new one
   const [draft, setDraft] = useState<Article>(() => {
@@ -99,6 +117,7 @@ export default function WritePage() {
     "draft",
   );
   const [published, setPublished] = useState(false);
+  const [publishedArticleId, setPublishedArticleId] = useState<string | null>(null);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
@@ -153,8 +172,34 @@ export default function WritePage() {
   };
 
   // Publish
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!title.trim()) return;
+
+    // Logged-in users publish to the DB via the API, so the story is real and
+    // bears the author's actual avatar from their profile.
+    if (isLoggedIn && user) {
+      try {
+        const created = await createArticle({
+          title,
+          subtitle,
+          body,
+          tags,
+          thumbnail: thumbnail || undefined,
+          is_member_only: isMemberOnly,
+          is_draft: false,
+        });
+        // Remove the local draft so it doesn't duplicate the DB article
+        deleteArticle(draft.id);
+        setPublishedArticleId(created.id);
+        setPublished(true);
+        return;
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to publish. Please try again.");
+        return;
+      }
+    }
+
+    // Guests fall back to the local store
     const finalArticle: Article = {
       ...draft,
       title,
@@ -163,7 +208,7 @@ export default function WritePage() {
       tags,
       thumbnail,
       isMemberOnly,
-      author: CURRENT_USER,
+      author: activeAuthor,
       readTime: estimateReadTime(body),
       publishedAt: new Date().toLocaleDateString("en-US", {
         month: "short",
@@ -171,6 +216,7 @@ export default function WritePage() {
       }),
     };
     saveArticle(finalArticle);
+    setPublishedArticleId(finalArticle.id);
     setPublished(true);
   };
 
@@ -194,7 +240,7 @@ export default function WritePage() {
           <div className="flex gap-3 mt-2">
             <button
               className="bg-green-700 text-white rounded-full px-6 py-2.5 text-[15px] font-semibold transition-colors font-sans hover:bg-green-800"
-              onClick={() => navigate(`/article/${draft.id}`)}
+              onClick={() => navigate(`/article/${publishedArticleId || draft.id}`)}
             >
               View story
             </button>
@@ -293,13 +339,13 @@ export default function WritePage() {
         {/* Author strip */}
         <div className="flex items-center gap-2.5 mb-8 pb-5 border-b border-neutral-100">
           <img
-            src={CURRENT_USER.avatar}
-            alt={CURRENT_USER.name}
+            src={activeAuthor.avatar}
+            alt={activeAuthor.name}
             className="w-9 h-9 rounded-full object-cover bg-neutral-100"
           />
           <div>
             <div className="text-sm font-semibold text-neutral-900">
-              {CURRENT_USER.name}
+              {activeAuthor.name}
             </div>
             <div className="text-xs text-neutral-400">
               {new Date().toLocaleDateString("en-US", {

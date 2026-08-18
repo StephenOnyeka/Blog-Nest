@@ -13,7 +13,9 @@ import { ConfigService } from '@nestjs/config';
     origin: '*',
   },
 })
-export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class NotificationsGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -33,13 +35,16 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
         return;
       }
 
-      const secret = this.configService.get<string>('JWT_SECRET') || 'fallback-secret';
+      const secret =
+        this.configService.get<string>('JWT_SECRET') || 'fallback-secret';
       const payload = this.jwtService.verify(token, { secret });
 
       if (payload && payload.sub) {
         const userRoom = `user:${payload.sub}`;
         await client.join(userRoom);
-        console.log(`🔌 WebSocket client ${client.id} joined room: ${userRoom}`);
+        console.log(
+          `🔌 WebSocket client ${client.id} joined room: ${userRoom}`,
+        );
       } else {
         client.disconnect();
       }

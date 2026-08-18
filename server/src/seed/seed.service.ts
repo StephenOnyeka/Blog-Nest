@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Profile } from '../entities/profile.entity';
 import { Article } from '../entities/article.entity';
+import { Comment } from '../entities/comment.entity';
 import { Notification } from '../entities/notification.entity';
 
 const LONG_BODY = `
@@ -46,7 +47,8 @@ const SAMPLE_AUTHORS = [
     name: 'Sarah Chen',
     username: 'sarahchen',
     email: 'sarah@example.com',
-    avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=sarah&backgroundColor=b6e3f4',
+    avatar:
+      'https://api.dicebear.com/9.x/avataaars/svg?seed=sarah&backgroundColor=b6e3f4',
     bio: 'Product designer & writer. Building tools for thought.',
     followers_count: 12400,
     following_count: 342,
@@ -55,7 +57,8 @@ const SAMPLE_AUTHORS = [
     name: 'Marcus Reid',
     username: 'marcusreid',
     email: 'marcus@example.com',
-    avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=marcus&backgroundColor=d1d4f9',
+    avatar:
+      'https://api.dicebear.com/9.x/avataaars/svg?seed=marcus&backgroundColor=d1d4f9',
     bio: 'Software engineer at Google. Writing about distributed systems.',
     followers_count: 8930,
     following_count: 120,
@@ -64,7 +67,8 @@ const SAMPLE_AUTHORS = [
     name: 'Priya Nair',
     username: 'priyanair',
     email: 'priya@example.com',
-    avatar: 'https://api.dicebear.com/9.x/avataaars/svg?seed=priya&backgroundColor=c0aede',
+    avatar:
+      'https://api.dicebear.com/9.x/avataaars/svg?seed=priya&backgroundColor=c0aede',
     bio: 'AI researcher. Making machines think — or at least seem to.',
     followers_count: 21000,
     following_count: 88,
@@ -75,52 +79,60 @@ const SAMPLE_ARTICLES = [
   {
     authorIndex: 0,
     title: 'The Quiet Renaissance of Long-Form Writing',
-    subtitle: 'Why blogging still matters in the age of TikTok and algorithmic feeds',
+    subtitle:
+      'Why blogging still matters in the age of TikTok and algorithmic feeds',
     body: LONG_BODY,
     read_time: 6,
     tags: ['Writing', 'Culture', 'Media'],
-    thumbnail: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400&q=80',
+    thumbnail:
+      'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400&q=80',
     claps: 1247,
-    comments_count: 43,
+    comments_count: 0,
     is_member_only: false,
     is_draft: false,
   },
   {
     authorIndex: 1,
     title: 'How I Built a Distributed System That Handles 10M Requests Per Day',
-    subtitle: 'A deep dive into Kafka, Redis, and the tradeoffs that kept me up at night',
+    subtitle:
+      'A deep dive into Kafka, Redis, and the tradeoffs that kept me up at night',
     body: LONG_BODY,
     read_time: 12,
     tags: ['Engineering', 'Backend', 'Distributed Systems'],
-    thumbnail: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&q=80',
+    thumbnail:
+      'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?w=400&q=80',
     claps: 3892,
-    comments_count: 118,
+    comments_count: 0,
     is_member_only: true,
     is_draft: false,
   },
   {
     authorIndex: 2,
     title: 'The Illusion of AI Alignment: What the Research Actually Shows',
-    subtitle: 'We are racing toward a technology we barely understand. Here is the state of the science.',
+    subtitle:
+      'We are racing toward a technology we barely understand. Here is the state of the science.',
     body: LONG_BODY,
     read_time: 15,
     tags: ['AI', 'Technology', 'Research'],
-    thumbnail: 'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=400&q=80',
+    thumbnail:
+      'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=400&q=80',
     claps: 8741,
-    comments_count: 356,
+    comments_count: 0,
     is_member_only: true,
     is_draft: false,
   },
   {
     authorIndex: 0,
     title: 'Words That Work: The UX Copy Principles Behind Great Products',
-    subtitle: 'Your app’s copy is not an afterthought — it’s a core part of your design',
+    subtitle:
+      'Your app’s copy is not an afterthought — it’s a core part of your design',
     body: LONG_BODY,
     read_time: 7,
     tags: ['UX', 'Design', 'Writing'],
-    thumbnail: 'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=400&q=80',
+    thumbnail:
+      'https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?w=400&q=80',
     claps: 2134,
-    comments_count: 67,
+    comments_count: 0,
     is_member_only: false,
     is_draft: false,
   },
@@ -131,9 +143,10 @@ const SAMPLE_ARTICLES = [
     body: LONG_BODY,
     read_time: 10,
     tags: ['TypeScript', 'JavaScript', 'Engineering'],
-    thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&q=80',
+    thumbnail:
+      'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=400&q=80',
     claps: 4321,
-    comments_count: 143,
+    comments_count: 0,
     is_member_only: false,
     is_draft: false,
   },
@@ -146,6 +159,8 @@ export class SeedService implements OnApplicationBootstrap {
     private readonly profileRepo: Repository<Profile>,
     @InjectRepository(Article)
     private readonly articleRepo: Repository<Article>,
+    @InjectRepository(Comment)
+    private readonly commentRepo: Repository<Comment>,
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
   ) {}
@@ -156,6 +171,10 @@ export class SeedService implements OnApplicationBootstrap {
       console.log('🌱 Seeding initial database records...');
       await this.seed();
       console.log('✅ Database seeding complete!');
+    } else {
+      // Existing database: just make sure comment counts match real rows so
+      // the numbers shown in the UI are always accurate.
+      await this.reconcileCommentCounts();
     }
   }
 
@@ -164,7 +183,9 @@ export class SeedService implements OnApplicationBootstrap {
 
     const savedProfiles: Profile[] = [];
     for (const authorData of SAMPLE_AUTHORS) {
-      let profile = await this.profileRepo.findOne({ where: { username: authorData.username } });
+      let profile = await this.profileRepo.findOne({
+        where: { username: authorData.username },
+      });
       if (!profile) {
         profile = await this.profileRepo.save(
           this.profileRepo.create({
@@ -203,10 +224,50 @@ export class SeedService implements OnApplicationBootstrap {
       savedArticles.push(article);
     }
 
-    // Seed sample notifications for all profiles in the database
+    // Seed a few real comments per article so comment counts match actual rows
     const allProfiles = await this.profileRepo.find();
-    for (const p of allProfiles) {
-      const existingNotifCount = await this.notificationRepo.count({ where: { user_id: p.id } });
+    if (allProfiles.length > 0) {
+      for (const article of savedArticles) {
+        const existing = await this.commentRepo.count({
+          where: { article_id: article.id },
+        });
+        if (existing === 0) {
+          const commenters = [
+            allProfiles[(article.id + 0) % allProfiles.length],
+            allProfiles[(article.id + 1) % allProfiles.length],
+          ];
+          const seedComments = [
+            {
+              author: commenters[0],
+              body: 'This is such a well-argued piece — the part about the attention economy really resonated with me.',
+            },
+            {
+              author: commenters[1],
+              body: 'Great read! Would love to see a follow-up with more concrete examples.',
+            },
+          ];
+          await this.commentRepo.save(
+            seedComments.map((c) =>
+              this.commentRepo.create({
+                article_id: article.id,
+                author_id: c.author.id,
+                body: c.body,
+              }),
+            ),
+          );
+        }
+      }
+    }
+
+    await this.reconcileCommentCounts();
+    console.log('💬 Comments seeded and counts reconciled!');
+
+    // Seed sample notifications for all profiles in the database
+    const allProfilesForNotifs = await this.profileRepo.find();
+    for (const p of allProfilesForNotifs) {
+      const existingNotifCount = await this.notificationRepo.count({
+        where: { user_id: p.id },
+      });
       if (existingNotifCount === 0) {
         const notif1 = this.notificationRepo.create({
           user_id: p.id,
@@ -224,7 +285,8 @@ export class SeedService implements OnApplicationBootstrap {
         const notif3 = this.notificationRepo.create({
           user_id: p.id,
           type: 'article_published',
-          message: 'Sarah Chen published a new story: "The Quiet Renaissance of Long-Form Writing".',
+          message:
+            'Sarah Chen published a new story: "The Quiet Renaissance of Long-Form Writing".',
           article_id: savedArticles[0]?.id ?? null,
           is_read: false,
         });
@@ -232,5 +294,20 @@ export class SeedService implements OnApplicationBootstrap {
       }
     }
     console.log('🔔 Notifications seeded successfully for all profiles!');
+  }
+
+  /** Set every article's comments_count to the actual number of comment rows */
+  private async reconcileCommentCounts() {
+    const articles = await this.articleRepo.find();
+    for (const article of articles) {
+      const realCount = await this.commentRepo.count({
+        where: { article_id: article.id },
+      });
+      await this.articleRepo.update(
+        { id: article.id },
+        { comments_count: realCount },
+      );
+    }
+    console.log('🔢 Comment counts reconciled with database rows.');
   }
 }

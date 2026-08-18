@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Notification } from '../entities/notification.entity';
 import { Profile } from '../entities/profile.entity';
 import { NotificationsGateway } from './notifications.gateway';
@@ -24,12 +24,14 @@ export class NotificationsService {
       read_at: n.read_at,
       article_id: n.article?.public_id ?? null,
       created_at: n.created_at,
-      ...(n.article ? {
-        article: {
-          id: n.article.public_id,
-          title: n.article.title,
-        }
-      } : {}),
+      ...(n.article
+        ? {
+            article: {
+              id: n.article.public_id,
+              title: n.article.title,
+            },
+          }
+        : {}),
     };
   }
 
@@ -41,10 +43,13 @@ export class NotificationsService {
         .createQueryBuilder('notification')
         .delete()
         .from(Notification)
-        .where('is_read = :isRead AND (read_at < :thirtyDaysAgo OR (read_at IS NULL AND created_at < :thirtyDaysAgo))', {
-          isRead: true,
-          thirtyDaysAgo,
-        })
+        .where(
+          'is_read = :isRead AND (read_at < :thirtyDaysAgo OR (read_at IS NULL AND created_at < :thirtyDaysAgo))',
+          {
+            isRead: true,
+            thirtyDaysAgo,
+          },
+        )
         .execute();
     } catch (err) {
       console.error('Failed to cleanup 30-day old read notifications:', err);
@@ -52,7 +57,9 @@ export class NotificationsService {
   }
 
   async getForUser(userPublicId: string) {
-    const profile = await this.profileRepo.findOne({ where: { public_id: userPublicId } });
+    const profile = await this.profileRepo.findOne({
+      where: { public_id: userPublicId },
+    });
     if (!profile) throw new NotFoundException('User not found');
 
     // Automatically trigger cleanup of read notifications older than 30 days
@@ -64,11 +71,13 @@ export class NotificationsService {
       order: { created_at: 'DESC' },
     });
 
-    return notifications.map(n => this.toPublic(n));
+    return notifications.map((n) => this.toPublic(n));
   }
 
   async getUnreadCount(userPublicId: string) {
-    const profile = await this.profileRepo.findOne({ where: { public_id: userPublicId } });
+    const profile = await this.profileRepo.findOne({
+      where: { public_id: userPublicId },
+    });
     if (!profile) throw new NotFoundException('User not found');
 
     const count = await this.notificationRepo.count({
@@ -79,7 +88,9 @@ export class NotificationsService {
   }
 
   async markAllRead(userPublicId: string) {
-    const profile = await this.profileRepo.findOne({ where: { public_id: userPublicId } });
+    const profile = await this.profileRepo.findOne({
+      where: { public_id: userPublicId },
+    });
     if (!profile) throw new NotFoundException('User not found');
 
     const now = new Date();
@@ -103,7 +114,9 @@ export class NotificationsService {
   }
 
   async deleteNotification(userPublicId: string, notificationPublicId: string) {
-    const profile = await this.profileRepo.findOne({ where: { public_id: userPublicId } });
+    const profile = await this.profileRepo.findOne({
+      where: { public_id: userPublicId },
+    });
     if (!profile) throw new NotFoundException('User not found');
 
     const notification = await this.notificationRepo.findOne({
@@ -116,7 +129,12 @@ export class NotificationsService {
   }
 
   // Utility: create a notification and emit via WebSockets in real time
-  async create(userId: number, type: string, message: string, articleId?: number) {
+  async create(
+    userId: number,
+    type: string,
+    message: string,
+    articleId?: number,
+  ) {
     const notification = this.notificationRepo.create({
       user_id: userId,
       type,
@@ -127,7 +145,10 @@ export class NotificationsService {
 
     const profile = await this.profileRepo.findOne({ where: { id: userId } });
     if (profile) {
-      this.notificationsGateway.emitNotification(profile.public_id, this.toPublic(saved));
+      this.notificationsGateway.emitNotification(
+        profile.public_id,
+        this.toPublic(saved),
+      );
     }
   }
 }

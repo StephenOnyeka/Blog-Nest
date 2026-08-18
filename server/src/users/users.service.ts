@@ -1,7 +1,6 @@
 import {
   Injectable,
   NotFoundException,
-  InternalServerErrorException,
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -74,7 +73,15 @@ export class UsersService {
       .map((f) => this.toPublicMini(f.following));
   }
 
-  async updateProfile(identifier: string, updates: { name?: string; username?: string; avatar?: string; bio?: string }) {
+  async updateProfile(
+    identifier: string,
+    updates: {
+      name?: string;
+      username?: string;
+      avatar?: string;
+      bio?: string;
+    },
+  ) {
     const profile = await this.findProfileByIdentifier(identifier);
     if (!profile) throw new NotFoundException(`Profile not found`);
 
@@ -94,12 +101,19 @@ export class UsersService {
     });
     if (existing) throw new ConflictException('Already following this user');
 
-    const follow = this.followRepo.create({ follower_id: follower.id, following_id: following.id });
+    const follow = this.followRepo.create({
+      follower_id: follower.id,
+      following_id: following.id,
+    });
     await this.followRepo.save(follow);
 
     // Update counts atomically using query builder
     await this.profileRepo.increment({ id: follower.id }, 'following_count', 1);
-    await this.profileRepo.increment({ id: following.id }, 'followers_count', 1);
+    await this.profileRepo.increment(
+      { id: following.id },
+      'followers_count',
+      1,
+    );
 
     // Send real-time notification via WebSockets
     await this.notificationsService.create(
@@ -125,7 +139,11 @@ export class UsersService {
     await this.followRepo.remove(follow);
 
     await this.profileRepo.decrement({ id: follower.id }, 'following_count', 1);
-    await this.profileRepo.decrement({ id: following.id }, 'followers_count', 1);
+    await this.profileRepo.decrement(
+      { id: following.id },
+      'followers_count',
+      1,
+    );
 
     return { message: 'Unfollowed successfully' };
   }

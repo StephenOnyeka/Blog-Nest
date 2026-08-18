@@ -1,20 +1,20 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddArticles1786784924442 implements MigrationInterface {
-    name = 'AddArticles1786784924442'
+  name = 'AddArticles1786784924442';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Drop the old articles table with CASCADE to also remove any FKs that depend on it
-        // (e.g. notifications.article_id FK that pointed to the old UUID-keyed articles table)
-        await queryRunner.query(`DROP TABLE IF EXISTS "articles" CASCADE`);
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Drop the old articles table with CASCADE to also remove any FKs that depend on it
+    // (e.g. notifications.article_id FK that pointed to the old UUID-keyed articles table)
+    await queryRunner.query(`DROP TABLE IF EXISTS "articles" CASCADE`);
 
-        // Drop old notifications / subscriptions tables that were part of the old Supabase schema
-        // so they can be recreated cleanly when those modules are implemented
-        await queryRunner.query(`DROP TABLE IF EXISTS "notifications" CASCADE`);
-        await queryRunner.query(`DROP TABLE IF EXISTS "subscriptions" CASCADE`);
+    // Drop old notifications / subscriptions tables that were part of the old Supabase schema
+    // so they can be recreated cleanly when those modules are implemented
+    await queryRunner.query(`DROP TABLE IF EXISTS "notifications" CASCADE`);
+    await queryRunner.query(`DROP TABLE IF EXISTS "subscriptions" CASCADE`);
 
-        // Create the new articles table with SERIAL PK + UUID public_id
-        await queryRunner.query(`
+    // Create the new articles table with SERIAL PK + UUID public_id
+    await queryRunner.query(`
             CREATE TABLE "articles" (
                 "id" SERIAL NOT NULL,
                 "public_id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -37,17 +37,19 @@ export class AddArticles1786784924442 implements MigrationInterface {
             )
         `);
 
-        // Add FK from articles.author_id -> profiles.id
-        await queryRunner.query(`
+    // Add FK from articles.author_id -> profiles.id
+    await queryRunner.query(`
             ALTER TABLE "articles"
             ADD CONSTRAINT "FK_6515da4dff8db423ce4eb841490"
             FOREIGN KEY ("author_id") REFERENCES "profiles"("id")
             ON DELETE CASCADE ON UPDATE NO ACTION
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "articles" DROP CONSTRAINT "FK_6515da4dff8db423ce4eb841490"`);
-        await queryRunner.query(`DROP TABLE "articles"`);
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(
+      `ALTER TABLE "articles" DROP CONSTRAINT "FK_6515da4dff8db423ce4eb841490"`,
+    );
+    await queryRunner.query(`DROP TABLE "articles"`);
+  }
 }

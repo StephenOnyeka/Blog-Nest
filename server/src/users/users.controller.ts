@@ -11,7 +11,14 @@ import {
   Request,
   UnauthorizedException,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiParam, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -32,7 +39,10 @@ export class UsersController {
   @Get(':id/following')
   @ApiOperation({ summary: 'List users that a given user is following' })
   @ApiParam({ name: 'id', description: 'User public UUID or username' })
-  @ApiResponse({ status: 200, description: 'Array of followed user mini profiles' })
+  @ApiResponse({
+    status: 200,
+    description: 'Array of followed user mini profiles',
+  })
   @ApiResponse({ status: 404, description: 'User not found' })
   async getFollowing(@Param('id') id: string) {
     return this.usersService.getFollowing(id);
@@ -41,7 +51,9 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Partial update of user profile (bio, avatar, name, social links)' })
+  @ApiOperation({
+    summary: 'Partial update of user profile (bio, avatar, name, social links)',
+  })
   @ApiParam({ name: 'id', description: 'User public UUID' })
   @ApiBody({
     schema: {
@@ -57,7 +69,11 @@ export class UsersController {
   })
   @ApiResponse({ status: 200, description: 'Profile updated' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async patchProfile(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+  async patchProfile(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Request() req: any,
+  ) {
     if (req.user.userId !== id) {
       throw new UnauthorizedException('You can only update your own profile');
     }
@@ -71,7 +87,11 @@ export class UsersController {
   @ApiParam({ name: 'id', description: 'User public UUID' })
   @ApiResponse({ status: 200, description: 'Profile updated' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async putProfile(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+  async putProfile(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Request() req: any,
+  ) {
     if (req.user.userId !== id) {
       throw new UnauthorizedException('You can only update your own profile');
     }
@@ -82,7 +102,10 @@ export class UsersController {
   @Post(':authorId/follow')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Follow a user' })
-  @ApiParam({ name: 'authorId', description: 'Public UUID of author to follow' })
+  @ApiParam({
+    name: 'authorId',
+    description: 'Public UUID of author to follow',
+  })
   @ApiResponse({ status: 201, description: 'Successfully followed user' })
   @ApiResponse({ status: 400, description: 'Cannot follow yourself' })
   async followUser(@Param('authorId') authorId: string, @Request() req: any) {
@@ -94,7 +117,10 @@ export class UsersController {
   @Delete(':authorId/follow')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Unfollow a user' })
-  @ApiParam({ name: 'authorId', description: 'Public UUID of author to unfollow' })
+  @ApiParam({
+    name: 'authorId',
+    description: 'Public UUID of author to unfollow',
+  })
   @ApiResponse({ status: 200, description: 'Successfully unfollowed user' })
   async unfollowUser(@Param('authorId') authorId: string, @Request() req: any) {
     const followerId = req.user.userId;

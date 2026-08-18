@@ -16,7 +16,9 @@ import { Profile } from '../entities/profile.entity';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: (configService.get<string>('JWT_EXPIRY') ?? '7d') as any },
+        signOptions: {
+          expiresIn: (configService.get<string>('JWT_EXPIRY') ?? '7d') as any,
+        },
       }),
     }),
   ],

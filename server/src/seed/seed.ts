@@ -5,7 +5,7 @@ import { SeedService } from './seed.service';
 async function bootstrap() {
   console.log('🌱 Starting manual database seed script...');
   const app = await NestFactory.createApplicationContext(AppModule);
-  
+
   try {
     const seedService = app.get(SeedService);
     await seedService.seed();
@@ -17,4 +17,4 @@ async function bootstrap() {
   }
 }
 
-bootstrap();
+void bootstrap();

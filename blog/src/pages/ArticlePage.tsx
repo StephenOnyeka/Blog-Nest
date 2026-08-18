@@ -3,34 +3,96 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import parse from 'html-react-parser';
 import DOMPurify from 'dompurify';
 import {
-  Heart, HeartAdd, Message, Save2, Share, More, ArrowLeft, Link1,
+  Heart, HeartAdd, Message, Save2, Share, More, ArrowLeft, Link1, Trash, Send2,
 } from 'iconsax-react';
 import PageTemplate from '../components/PageTemplate';
 import ArticleCard from '../components/ArticleCard';
 import { ARTICLES, formatClaps } from '../data/mockData';
 import { getUserArticles } from '../data/articleStore';
+import { getArticleById, type ApiArticle } from '../data/api';
+import { normalizeApiArticle } from '../data/normalize';
+import {
+  useArticleComments,
+  useAddComment,
+  useDeleteComment,
+  useBookmarkStatus,
+  useToggleBookmark,
+  useClapArticle,
+} from '../hooks/queries';
 import { useAuth } from '../context/AuthContext';
 import { useAuthGate } from '../context/AuthGateContext';
+import { toast } from 'sonner';
 
 const toolbarBtn = 'flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-900 cursor-pointer';
 
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const { openAuthModal } = useAuthGate();
-  const article = ARTICLES.find(a => a.id === id) ?? getUserArticles().find(a => a.id === id);
+  const [article, setArticle] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isApiArticle, setIsApiArticle] = useState(false);
 
   const [claps, setClaps] = useState(0);
   const [clapped, setClapped] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [following, setFollowing] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [toast, setToast] = useState('');
+  const [toastMsg, setToastMsg] = useState('');
+
+  // Comments
+  const [commentText, setCommentText] = useState('');
+  const [replyToId, setReplyToId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const { data: comments, isLoading: commentsLoading } = useArticleComments(
+    isApiArticle && article ? article.id : undefined,
+  );
+  const addCommentMut = useAddComment(isApiArticle && article ? article.id : undefined);
+  const deleteCommentMut = useDeleteComment(isApiArticle && article ? article.id : undefined);
+
+  // Bookmark (auth)
+  const { data: bookmarkStatus } = useBookmarkStatus(
+    isApiArticle && article ? article.id : undefined,
+    isLoggedIn,
+  );
+  const toggleBookmark = useToggleBookmark(isApiArticle && article ? article.id : undefined);
+  const saved = isApiArticle ? !!bookmarkStatus?.bookmarked : false;
+
+  // Clap (API-backed for real articles)
+  const clapMut = useClapArticle(isApiArticle && article ? article.id : undefined);
 
   useEffect(() => {
-    if (article) setClaps(article.claps);
-  }, [article]);
+    let isMounted = true;
+    setIsLoading(true);
+
+    const loadArticle = async () => {
+      if (!id) return;
+      try {
+        // Only attempt to fetch from API if the ID is a valid UUID
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+        if (!isUuid) throw new Error("Not a UUID, fallback to local/mock");
+        
+        const apiArticle: ApiArticle = await getArticleById(id);
+        if (!isMounted) return;
+        setArticle(normalizeApiArticle(apiArticle));
+        setClaps(apiArticle.claps);
+        setIsApiArticle(true);
+      } catch {
+        if (!isMounted) return;
+        const local = ARTICLES.find(a => a.id === id) ?? getUserArticles().find(a => a.id === id);
+        setArticle(local ?? null);
+        setIsApiArticle(false);
+        if (local) setClaps(local.claps);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadArticle();
+    return () => {
+      isMounted = false;
+    };
+  }, [id]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -43,9 +105,90 @@ export default function ArticlePage() {
   }, []);
 
   const showToast = (msg: string) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 2500);
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(''), 2500);
   };
+
+  const commentCount = isApiArticle
+    ? (comments?.length ?? article?.comments ?? 0)
+    : (article?.comments ?? 0);
+
+  const handleAddComment = async () => {
+    if (!isLoggedIn) { openAuthModal(); return; }
+    if (!isApiArticle) {
+      showToast('This local draft cannot receive comments');
+      return;
+    }
+    const text = commentText.trim();
+    if (!text) return;
+    try {
+      await addCommentMut.mutateAsync({ body: text });
+      setCommentText('');
+      toast.success('Comment posted');
+    } catch {
+      // error toast handled by api interceptor
+    }
+  };
+
+  const handleReply = async (parentId: string) => {
+    if (!isLoggedIn) { openAuthModal(); return; }
+    const text = replyText.trim();
+    if (!text) return;
+    try {
+      await addCommentMut.mutateAsync({ body: text, parentId });
+      setReplyText('');
+      setReplyToId(null);
+      toast.success('Reply posted');
+    } catch {
+      // error toast handled by api interceptor
+    }
+  };
+
+  const handleClap = () => {
+    if (!isApiArticle || !isLoggedIn) {
+      // Guests or mock articles keep the local toggle behaviour
+      setClapped(v => !v);
+      setClaps(c => clapped ? c - 1 : c + 1);
+      return;
+    }
+    // API-backed: increment on the server and use the authoritative count
+    setClapped(true);
+    clapMut.mutate(undefined, {
+      onSuccess: (res) => setClaps(res.claps),
+    });
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    try {
+      await deleteCommentMut.mutateAsync(commentId);
+      toast.success('Comment deleted');
+    } catch {
+      // error toast handled by api interceptor
+    }
+  };
+
+  const handleSaveToggle = () => {
+    if (!isLoggedIn) { openAuthModal(); return; }
+    if (!isApiArticle) {
+      showToast('This draft can only be saved locally');
+      return;
+    }
+    toggleBookmark.mutate(!!bookmarkStatus?.bookmarked, {
+      onSuccess: (res) => {
+        showToast(res.bookmarked ? 'Saved to reading list' : 'Removed from list');
+      },
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <PageTemplate>
+        <div className="max-w-[740px] mx-auto px-4 sm:px-6 py-20 flex justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-neutral-900"></div>
+        </div>
+      </PageTemplate>
+    );
+  }
 
   if (!article) {
     return (
@@ -107,7 +250,7 @@ export default function ArticlePage() {
         <div className="mb-8">
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mb-5">
-            {article.tags.map(tag => (
+            {article.tags.map((tag: string) => (
               <span key={tag} className="bg-neutral-100 text-neutral-600 text-xs font-medium px-3 py-1 rounded-full">{tag}</span>
             ))}
             {article.isMemberOnly && (
@@ -157,11 +300,7 @@ export default function ArticlePage() {
             <div className="flex items-center gap-4">
               <button
                 className={`${toolbarBtn} ${clapped ? 'text-red-600' : ''}`}
-                onClick={() => {
-                  if (!isLoggedIn) { openAuthModal(); return; }
-                  setClapped(v => !v);
-                  setClaps(c => clapped ? c - 1 : c + 1);
-                }}
+                onClick={handleClap}
                 aria-label="Clap"
               >
                 {clapped
@@ -170,17 +309,13 @@ export default function ArticlePage() {
                 }
                 <span>{formatClaps(claps)}</span>
               </button>
-              <button className={toolbarBtn} aria-label="Comments">
+              <a href="#responses" className={toolbarBtn} aria-label="Comments">
                 <Message size={20}  variant="Linear" color="currentColor" />
-                <span>{article.comments}</span>
-              </button>
+                <span>{commentCount}</span>
+              </a>
               <button
                 className={`${toolbarBtn} ${saved ? 'text-green-700' : ''}`}
-                onClick={() => {
-                  if (!isLoggedIn) { openAuthModal(); return; }
-                  setSaved(v => !v);
-                  showToast(saved ? 'Removed from list' : 'Saved to reading list');
-                }}
+                onClick={handleSaveToggle}
                 aria-label="Save"
               >
                 <Save2 size={20} variant={saved ? 'Bold' : 'Linear'} color="currentColor" />
@@ -199,11 +334,13 @@ export default function ArticlePage() {
           </div>
 
           {/* Cover image */}
-          <img
-            src={article.thumbnail}
-            alt={article.title}
-            className="w-full max-h-[500px] object-cover rounded-lg mt-8"
-          />
+          {article.thumbnail && (
+            <img
+              src={article.thumbnail}
+              alt={article.title}
+              className="w-full max-h-[500px] object-cover rounded-lg mt-8"
+            />
+          )}
         </div>
 
         {/* Body */}
@@ -215,11 +352,7 @@ export default function ArticlePage() {
         <div className="flex items-center flex-wrap gap-4 py-8 border-t border-b border-neutral-100 my-10">
           <button
             className={`flex items-center gap-2 text-base font-medium transition-colors ${clapped ? 'text-red-600' : 'text-neutral-500 hover:text-neutral-900'}`}
-            onClick={() => {
-              if (!isLoggedIn) { openAuthModal(); return; }
-              setClapped(v => !v);
-              setClaps(c => clapped ? c - 1 : c + 1);
-            }}
+            onClick={handleClap}
           >
             {clapped
               ? <Heart size={28} variant="Bold" color="currentColor" />
@@ -227,10 +360,10 @@ export default function ArticlePage() {
             }
             <span className="text-base font-medium">{formatClaps(claps)}</span>
           </button>
-          <button className="flex items-center gap-2 text-neutral-500 text-sm hover:text-neutral-900 transition-colors" aria-label="Comments">
+          <a href="#responses" className="flex items-center gap-2 text-neutral-500 text-sm hover:text-neutral-900 transition-colors" aria-label="Comments">
             <Message size={24}  variant="Linear" color="currentColor" />
-            <span>{article.comments} responses</span>
-          </button>
+            <span>{commentCount} responses</span>
+          </a>
 
           <div className="ml-auto flex gap-4">
             <button
@@ -242,15 +375,90 @@ export default function ArticlePage() {
             </button>
             <button
               className={`flex items-center gap-1.5 transition-colors ${saved ? 'text-green-700' : 'text-neutral-400 hover:text-neutral-900'}`}
-              onClick={() => {
-                if (!isLoggedIn) { openAuthModal(); return; }
-                setSaved(v => !v);
-                showToast(saved ? 'Removed from list' : 'Saved!');
-              }}
+              onClick={handleSaveToggle}
               aria-label="Save"
             >
               <Save2 size={20} variant={saved ? 'Bold' : 'Linear'} color="currentColor" />
             </button>
+          </div>
+        </div>
+
+        {/* Responses / Comments */}
+        <div id="responses" className="mt-2 scroll-mt-24">
+          <h2 className="text-2xl font-bold text-neutral-900 mb-6">Responses ({commentCount})</h2>
+
+          {/* Comment composer */}
+          {isLoggedIn ? (
+            <div className="flex items-start gap-3 mb-8">
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-100 shrink-0">
+                <img
+                  src={user?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.username || 'me'}`}
+                  alt={user?.name || 'You'}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex-1">
+                <textarea
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder="What are your thoughts?"
+                  rows={3}
+                  className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm text-neutral-900 outline-none focus:border-neutral-900 transition-colors resize-none"
+                />
+                <div className="flex justify-end mt-2">
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!commentText.trim() || addCommentMut.isPending}
+                    className="flex items-center gap-1.5 bg-neutral-900 text-white rounded-full px-5 py-2 text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-40"
+                  >
+                    <Send2 size={16} variant="Linear" color="currentColor" />
+                    {addCommentMut.isPending ? 'Posting…' : 'Respond'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={openAuthModal}
+              className="w-full border border-neutral-200 rounded-xl px-4 py-4 text-sm text-neutral-400 text-left hover:border-neutral-900 hover:text-neutral-900 transition-colors mb-8"
+            >
+              Sign in to leave a response…
+            </button>
+          )}
+
+          {/* Comment list — threaded (top-level + replies) */}
+          <div className="space-y-6">
+            {commentsLoading && (
+              <div className="text-sm text-neutral-400 py-4">Loading responses…</div>
+            )}
+            {!commentsLoading && comments && comments.length === 0 && (
+              <div className="text-sm text-neutral-400 py-4">
+                No responses yet — be the first to share your thoughts.
+              </div>
+            )}
+            {comments
+              ?.filter((c) => !c.parent_id)
+              .map((comment) => {
+                const replies = comments.filter((c) => c.parent_id === comment.id);
+                return (
+                  <CommentThread
+                    key={comment.id}
+                    comment={comment}
+                    replies={replies}
+                    isLoggedIn={isLoggedIn}
+                    currentUserId={user?.id}
+                    replyToId={replyToId}
+                    replyText={replyText}
+                    onReplyTextChange={setReplyText}
+                    onToggleReply={setReplyToId}
+                    onSubmitReply={() => handleReply(comment.id)}
+                    onDelete={handleDeleteComment}
+                    onOpenAuth={openAuthModal}
+                    deleting={deleteCommentMut.isPending}
+                    replying={addCommentMut.isPending}
+                  />
+                );
+              })}
           </div>
         </div>
 
@@ -280,10 +488,14 @@ export default function ArticlePage() {
                 {following ? 'Following' : 'Follow'}
               </button>
             </div>
-            <p className="text-sm text-neutral-500 mb-2">{article.author.bio}</p>
-            <span className="text-[13px] text-neutral-400">
-              {article.author.followers.toLocaleString()} followers
-            </span>
+            {article.author.bio && (
+              <p className="text-sm text-neutral-500 mb-2">{article.author.bio}</p>
+            )}
+            {article.author.followers > 0 && (
+              <span className="text-[13px] text-neutral-400">
+                {article.author.followers.toLocaleString()} followers
+              </span>
+            )}
           </div>
         </div>
 
@@ -313,11 +525,183 @@ export default function ArticlePage() {
       </div>
 
       {/* Toast */}
-      {toast && (
+      {toastMsg && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-neutral-900 text-white text-sm px-5 py-2.5 rounded-full shadow-lg z-[999] animate-fade-in">
-          {toast}
+          {toastMsg}
         </div>
       )}
     </PageTemplate>
+  );
+}
+
+interface CommentThreadProps {
+  comment: any;
+  replies: any[];
+  isLoggedIn: boolean;
+  currentUserId?: string;
+  replyToId: string | null;
+  replyText: string;
+  onReplyTextChange: (v: string) => void;
+  onToggleReply: (id: string | null) => void;
+  onSubmitReply: () => void;
+  onDelete: (commentId: string) => void;
+  onOpenAuth: () => void;
+  deleting: boolean;
+  replying: boolean;
+}
+
+/** One top-level comment with its replies nested underneath */
+function CommentThread({
+  comment,
+  replies,
+  isLoggedIn,
+  currentUserId,
+  replyToId,
+  replyText,
+  onReplyTextChange,
+  onToggleReply,
+  onSubmitReply,
+  onDelete,
+  onOpenAuth,
+  deleting,
+  replying,
+}: CommentThreadProps) {
+  const isOwn = isLoggedIn && comment.author?.id === currentUserId;
+  const showReplyBox = replyToId === comment.id;
+
+  return (
+    <div>
+      {/* Top-level comment */}
+      <CommentItem
+        comment={comment}
+        isOwn={isOwn}
+        showReplyButton
+        onReply={() => isLoggedIn ? onToggleReply(comment.id) : onOpenAuth()}
+        onDelete={() => onDelete(comment.id)}
+        deleting={deleting}
+      />
+
+      {/* Reply composer */}
+      {showReplyBox && (
+        <div className="flex items-start gap-3 mt-3 ml-12 sm:ml-14">
+          <div className="flex-1">
+            <textarea
+              value={replyText}
+              onChange={(e) => onReplyTextChange(e.target.value)}
+              placeholder={`Reply to ${comment.author?.name || 'user'}…`}
+              rows={2}
+              autoFocus
+              className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm text-neutral-900 outline-none focus:border-neutral-900 transition-colors resize-none"
+            />
+            <div className="flex justify-end gap-2 mt-2">
+              <button
+                onClick={() => onToggleReply(null)}
+                className="text-sm text-neutral-400 hover:text-neutral-700 transition-colors px-3 py-1.5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={onSubmitReply}
+                disabled={!replyText.trim() || replying}
+                className="flex items-center gap-1.5 bg-neutral-900 text-white rounded-full px-4 py-1.5 text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-40"
+              >
+                <Send2 size={14} variant="Linear" color="currentColor" />
+                {replying ? 'Posting…' : 'Reply'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Replies (one level deep) */}
+      {replies.length > 0 && (
+        <div className="mt-4 ml-6 sm:ml-8 pl-4 sm:pl-6 border-l-2 border-neutral-100 space-y-4">
+          {replies.map((reply) => {
+            const isReplyOwn = isLoggedIn && reply.author?.id === currentUserId;
+            return (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                isOwn={isReplyOwn}
+                showReplyButton={false}
+                onReply={() => {}}
+                onDelete={() => onDelete(reply.id)}
+                deleting={deleting}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommentItem({
+  comment,
+  isOwn,
+  showReplyButton,
+  onReply,
+  onDelete,
+  deleting,
+}: {
+  comment: any;
+  isOwn: boolean;
+  showReplyButton: boolean;
+  onReply: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-100 shrink-0">
+        <img
+          src={comment.author?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${comment.author?.username || 'user'}`}
+          alt={comment.author?.name || 'User'}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Link
+              to={comment.author?.username ? `/profile/${comment.author.username}` : '#'}
+              className="font-semibold text-neutral-900 hover:underline truncate"
+            >
+              {comment.author?.name || 'User'}
+            </Link>
+            <span className="text-xs text-neutral-400 shrink-0">
+              {new Date(comment.created_at).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </span>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            {showReplyButton && (
+              <button
+                onClick={onReply}
+                className="text-xs font-medium text-neutral-400 hover:text-neutral-900 transition-colors"
+              >
+                Reply
+              </button>
+            )}
+            {isOwn && (
+              <button
+                onClick={onDelete}
+                disabled={deleting}
+                className="text-neutral-300 hover:text-red-600 transition-colors"
+                aria-label="Delete comment"
+              >
+                <Trash size={15} variant="Linear" color="currentColor" />
+              </button>
+            )}
+          </div>
+        </div>
+        <p className="text-sm text-neutral-700 leading-relaxed mt-1 whitespace-pre-wrap break-words">
+          {comment.body}
+        </p>
+      </div>
+    </div>
   );
 }

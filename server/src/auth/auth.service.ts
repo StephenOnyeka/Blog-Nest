@@ -32,7 +32,12 @@ export class AuthService {
     };
   }
 
-  async register(name: string, username: string, email: string, password: string) {
+  async register(
+    name: string,
+    username: string,
+    email: string,
+    password: string,
+  ) {
     const existing = await this.profileRepo.findOne({
       where: [{ email }, { username }],
     });
@@ -41,10 +46,18 @@ export class AuthService {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-    const profile = this.profileRepo.create({ name, username, email, password: hashed });
+    const profile = this.profileRepo.create({
+      name,
+      username,
+      email,
+      password: hashed,
+    });
     await this.profileRepo.save(profile);
 
-    const token = this.jwtService.sign({ sub: profile.public_id, email: profile.email });
+    const token = this.jwtService.sign({
+      sub: profile.public_id,
+      email: profile.email,
+    });
     return { token, user: this.toPublicUser(profile) };
   }
 
@@ -55,12 +68,17 @@ export class AuthService {
     const valid = await bcrypt.compare(password, profile.password);
     if (!valid) throw new UnauthorizedException('Invalid email or password');
 
-    const token = this.jwtService.sign({ sub: profile.public_id, email: profile.email });
+    const token = this.jwtService.sign({
+      sub: profile.public_id,
+      email: profile.email,
+    });
     return { token, user: this.toPublicUser(profile) };
   }
 
   async getMe(publicId: string) {
-    const profile = await this.profileRepo.findOne({ where: { public_id: publicId } });
+    const profile = await this.profileRepo.findOne({
+      where: { public_id: publicId },
+    });
     if (!profile) throw new UnauthorizedException('User not found');
     return { user: this.toPublicUser(profile) };
   }

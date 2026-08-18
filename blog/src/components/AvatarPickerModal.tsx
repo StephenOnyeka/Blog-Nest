@@ -2,20 +2,20 @@ import React, { useState, useMemo } from 'react';
 import { createAvatar } from '@dicebear/core';
 import {
   lorelei,
+  loreleiNeutral,
   avataaars,
-  bottts,
-  funEmoji,
+  avataaarsNeutral,
   micah,
   personas,
   adventurer,
-  thumbs,
+  adventurerNeutral,
   openPeeps,
-  pixelArt,
   notionists,
-  bigSmile,
-  croodles,
+  notionistsNeutral,
   miniavs,
   dylan,
+  croodles,
+  bigEars,
   toonHead,
 } from '@dicebear/collection';
 import { CloseCircle, GalleryExport, TickCircle } from 'iconsax-react';
@@ -26,24 +26,24 @@ interface AvatarPickerModalProps {
   onSelect: (base64Avatar: string) => Promise<void> | void;
 }
 
-// 16 avatar definitions using DiceBear styles and seeds
+// 16 avatar definitions — all human person styles (no robots/emojis/abstracts)
 const AVATAR_STYLES = [
-  { style: lorelei, seed: 'Felix', label: 'Lorelei 1' },
-  { style: avataaars, seed: 'Aneka', label: 'Avataaars 1' },
-  { style: funEmoji, seed: 'Sparkles', label: 'Emoji 1' },
-  { style: bottts, seed: 'Buster', label: 'Bot 1' },
-  { style: micah, seed: 'Zoe', label: 'Micah 1' },
-  { style: personas, seed: 'Maya', label: 'Persona 1' },
-  { style: adventurer, seed: 'Oliver', label: 'Adventurer 1' },
-  { style: thumbs, seed: 'Lucky', label: 'Thumb 1' },
-  { style: openPeeps, seed: 'Sasha', label: 'Peep 1' },
-  { style: pixelArt, seed: 'Pixel', label: 'Pixel 1' },
-  { style: notionists, seed: 'Alex', label: 'Notionist 1' },
-  { style: bigSmile, seed: 'Joy', label: 'Smile 1' },
-  { style: croodles, seed: 'Doodle', label: 'Croodle 1' },
-  { style: miniavs, seed: 'Mini', label: 'Mini 1' },
-  { style: dylan, seed: 'Dylan', label: 'Dylan 1' },
-  { style: toonHead, seed: 'Toon', label: 'Toon 1' },
+  { style: lorelei, seed: 'Felix', label: 'Lorelei' },
+  { style: avataaars, seed: 'Aneka', label: 'Avataaars' },
+  { style: micah, seed: 'Zoe', label: 'Micah' },
+  { style: personas, seed: 'Maya', label: 'Personas' },
+  { style: adventurer, seed: 'Oliver', label: 'Adventurer' },
+  { style: openPeeps, seed: 'Sasha', label: 'Open Peeps' },
+  { style: notionists, seed: 'Alex', label: 'Notionists' },
+  { style: miniavs, seed: 'Nina', label: 'Miniavs' },
+  { style: dylan, seed: 'Dylan', label: 'Dylan' },
+  { style: croodles, seed: 'Riley', label: 'Croodles' },
+  { style: bigEars, seed: 'Emma', label: 'Big Ears' },
+  { style: toonHead, seed: 'Kai', label: 'Toon Head' },
+  { style: loreleiNeutral, seed: 'Sam', label: 'Lorelei Neutral' },
+  { style: avataaarsNeutral, seed: 'Jordan', label: 'Avataaars Neutral' },
+  { style: adventurerNeutral, seed: 'Taylor', label: 'Adventurer Neutral' },
+  { style: notionistsNeutral, seed: 'Casey', label: 'Notionists Neutral' },
 ];
 
 /** Helper to generate base64 SVG Data URI from DiceBear avatar */

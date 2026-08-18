@@ -1,5 +1,11 @@
 import { Controller, Post, Get, Delete, Body, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiBody } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiQuery,
+  ApiBody,
+} from '@nestjs/swagger';
 import { SubscriptionsService } from './subscriptions.service';
 
 @ApiTags('Subscriptions')
@@ -15,14 +21,27 @@ export class SubscriptionsController {
       required: ['email'],
       properties: {
         email: { type: 'string', example: 'subscriber@example.com' },
-        topics: { type: 'array', items: { type: 'string' }, example: ['Technology', 'Design'] },
+        topics: {
+          type: 'array',
+          items: { type: 'string' },
+          example: ['Technology', 'Design'],
+        },
         newsletter: { type: 'boolean', example: true },
       },
     },
   })
-  @ApiResponse({ status: 201, description: 'Subscription created and verification email sent' })
-  async subscribe(@Body() body: { email: string; topics?: string[]; newsletter?: boolean }) {
-    return this.subscriptionsService.subscribe(body.email, body.topics, body.newsletter);
+  @ApiResponse({
+    status: 201,
+    description: 'Subscription created and verification email sent',
+  })
+  async subscribe(
+    @Body() body: { email: string; topics?: string[]; newsletter?: boolean },
+  ) {
+    return this.subscriptionsService.subscribe(
+      body.email,
+      body.topics,
+      body.newsletter,
+    );
   }
 
   @Get('verify')

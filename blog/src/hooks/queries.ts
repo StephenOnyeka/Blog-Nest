@@ -21,6 +21,14 @@ import {
   unfollowUser,
   getArticles,
   getArticleById,
+  getArticleComments,
+  addComment,
+  deleteComment,
+  clapArticle,
+  getBookmarkStatus,
+  bookmarkArticle,
+  unbookmarkArticle,
+  getMyBookmarkedArticles,
   getNotifications,
   getUnreadNotificationCount,
   markAllNotificationsRead,
@@ -39,6 +47,9 @@ export const queryKeys = {
   following: (userId: string) => ["following", userId] as const,
   articles: (params: GetArticlesParams = {}) => ["articles", params] as const,
   article: (id: string) => ["article", id] as const,
+  articleComments: (articleId: string) => ["article", articleId, "comments"] as const,
+  bookmarkStatus: (articleId: string) => ["bookmark", articleId] as const,
+  myBookmarks: ["bookmarks"] as const,
   notifications: ["notifications"] as const,
   unreadNotificationCount: ["notifications", "unread-count"] as const,
 };
@@ -110,6 +121,85 @@ export function useArticle(id: string | undefined) {
     queryKey: queryKeys.article(id ?? ""),
     queryFn: () => getArticleById(id as string),
     enabled: !!id,
+  });
+}
+
+// ─── Comments & Bookmarks ───────────────────────────────────────────────────
+
+export function useArticleComments(articleId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.articleComments(articleId ?? ""),
+    queryFn: () => getArticleComments(articleId as string),
+    enabled: !!articleId,
+  });
+}
+
+export function useAddComment(articleId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ body, parentId }: { body: string; parentId?: string }) =>
+      addComment(articleId as string, body, parentId),
+    onSuccess: () => {
+      if (articleId) {
+        qc.invalidateQueries({ queryKey: queryKeys.articleComments(articleId) });
+        qc.invalidateQueries({ queryKey: queryKeys.article(articleId) });
+      }
+    },
+  });
+}
+
+/** Clap an article — returns the server-side updated count */
+export function useClapArticle(articleId: string | undefined) {
+  return useMutation({
+    mutationFn: () => clapArticle(articleId as string),
+  });
+}
+
+export function useDeleteComment(articleId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (commentId: string) => deleteComment(articleId as string, commentId),
+    onSuccess: () => {
+      if (articleId) {
+        qc.invalidateQueries({ queryKey: queryKeys.articleComments(articleId) });
+        qc.invalidateQueries({ queryKey: queryKeys.article(articleId) });
+      }
+    },
+  });
+}
+
+/** Bookmark status for a single article (auth) */
+export function useBookmarkStatus(articleId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.bookmarkStatus(articleId ?? ""),
+    queryFn: () => getBookmarkStatus(articleId as string),
+    enabled: !!articleId && enabled,
+  });
+}
+
+/** Toggle bookmark on an article (auth) */
+export function useToggleBookmark(articleId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bookmarked: boolean) =>
+      bookmarked
+        ? unbookmarkArticle(articleId as string)
+        : bookmarkArticle(articleId as string),
+    onSuccess: () => {
+      if (articleId) {
+        qc.invalidateQueries({ queryKey: queryKeys.bookmarkStatus(articleId) });
+      }
+      qc.invalidateQueries({ queryKey: queryKeys.myBookmarks });
+    },
+  });
+}
+
+/** All articles bookmarked by the logged-in user (auth) */
+export function useMyBookmarks(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.myBookmarks,
+    queryFn: getMyBookmarkedArticles,
+    enabled,
   });
 }
 

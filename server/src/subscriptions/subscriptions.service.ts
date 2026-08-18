@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Subscription } from '../entities/subscription.entity';
@@ -12,7 +12,9 @@ export class SubscriptionsService {
   ) {}
 
   async subscribe(email: string, topics: string[] = [], newsletter = true) {
-    let subscription = await this.subscriptionRepo.findOne({ where: { email } });
+    let subscription = await this.subscriptionRepo.findOne({
+      where: { email },
+    });
 
     if (subscription) {
       // Update existing subscription
@@ -24,7 +26,13 @@ export class SubscriptionsService {
 
     // Create new subscription with a verification token
     const token = crypto.randomBytes(32).toString('hex');
-    subscription = this.subscriptionRepo.create({ email, topics, newsletter, token, verified: false });
+    subscription = this.subscriptionRepo.create({
+      email,
+      topics,
+      newsletter,
+      token,
+      verified: false,
+    });
     await this.subscriptionRepo.save(subscription);
 
     // In production you would send a verification email here
@@ -33,7 +41,9 @@ export class SubscriptionsService {
   }
 
   async verify(token: string) {
-    const subscription = await this.subscriptionRepo.findOne({ where: { token } });
+    const subscription = await this.subscriptionRepo.findOne({
+      where: { token },
+    });
     if (!subscription) return { success: false };
 
     subscription.verified = true;
@@ -43,7 +53,9 @@ export class SubscriptionsService {
   }
 
   async unsubscribe(token: string) {
-    const subscription = await this.subscriptionRepo.findOne({ where: { token } });
+    const subscription = await this.subscriptionRepo.findOne({
+      where: { token },
+    });
     if (!subscription) return { success: false };
 
     await this.subscriptionRepo.remove(subscription);

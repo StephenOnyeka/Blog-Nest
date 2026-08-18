@@ -5,12 +5,30 @@ import ArticleCard from '../components/ArticleCard';
 import Sidebar from '../components/Sidebar';
 import { ARTICLES, TOPICS } from '../data/mockData';
 import { getUserArticles } from '../data/articleStore';
+import { useArticles, useMyBookmarks } from '../hooks/queries';
+import { useAuth } from '../context/AuthContext';
+import { normalizeApiArticle } from '../data/normalize';
 
 export default function HomePage() {
   const [activeTopic, setActiveTopic] = useState('For You');
+  const { isLoggedIn } = useAuth();
 
-  // Merge user-written articles (newest first) with mock articles
-  const allArticles = [...getUserArticles(), ...ARTICLES];
+  // Load articles from the API (real DB articles, which carry the author's
+  // avatar). Fall back to the mock feed only when the API is unreachable.
+  const { data: apiData, isError } = useArticles({ limit: 50 });
+
+  // Bookmarks so feed cards show the real saved state from the DB
+  const { data: bookmarks } = useMyBookmarks(isLoggedIn);
+  const bookmarkedIds = new Set(bookmarks?.map((b) => b.id) ?? []);
+
+  const serverAvailable = !isError && !!apiData;
+
+  const allArticles = serverAvailable
+    ? [
+        ...getUserArticles(), // user drafts from localStorage still show
+        ...(apiData?.articles ?? []).map(normalizeApiArticle),
+      ]
+    : [...getUserArticles(), ...ARTICLES];
 
   const filteredArticles = activeTopic === 'For You' || activeTopic === 'Following'
     ? allArticles
@@ -60,7 +78,11 @@ export default function HomePage() {
             </div>
           ) : (
             filteredArticles.map(article => (
-              <ArticleCard key={article.id} article={article} />
+              <ArticleCard
+                key={article.id}
+                article={article}
+                initialSaved={bookmarkedIds.has(article.id)}
+              />
             ))
           )}
         </div>

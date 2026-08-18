@@ -22,7 +22,9 @@ async function bootstrap() {
   // Swagger OpenAPI Documentation Configuration
   const config = new DocumentBuilder()
     .setTitle('BlogNest API')
-    .setDescription('RESTful API documentation for BlogNest publishing platform')
+    .setDescription(
+      'RESTful API documentation for BlogNest publishing platform',
+    )
     .setVersion('1.0')
     .addBearerAuth(
       {
@@ -42,6 +44,8 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
   console.log(`🚀 Server is running on: ${await app.getUrl()}`);
-  console.log(`📚 Swagger API Docs available at: http://localhost:${process.env.PORT ?? 3000}/api/docs`);
+  console.log(
+    `📚 Swagger API Docs available at: http://localhost:${process.env.PORT ?? 3000}/api/docs`,
+  );
 }
 bootstrap();

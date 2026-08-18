@@ -6,9 +6,12 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { Profile } from './profile.entity';
+import { Comment } from './comment.entity';
+import { Bookmark } from './bookmark.entity';
 
 @Entity('articles')
 export class Article {
@@ -55,9 +58,17 @@ export class Article {
   @Column()
   author_id: number;
 
-  @ManyToOne(() => Profile, (profile) => profile.articles, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Profile, (profile) => profile.articles, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'author_id' })
   author: Profile;
+
+  @OneToMany(() => Comment, (comment) => comment.article)
+  comments: Comment[];
+
+  @OneToMany(() => Bookmark, (bookmark) => bookmark.article)
+  bookmarks: Bookmark[];
 
   @CreateDateColumn()
   created_at: Date;

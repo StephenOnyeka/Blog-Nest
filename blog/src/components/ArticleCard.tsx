@@ -1,20 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Heart, HeartAdd, Save2, Message, More,
 } from 'iconsax-react';
 import type { Article } from '../data/mockData';
 import { formatClaps } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { useAuthGate } from '../context/AuthGateContext';
+import { useToggleBookmark } from '../hooks/queries';
 
 interface ArticleCardProps {
   article: Article;
   showThumbnail?: boolean;
+  /** Initial bookmarked state from the DB (e.g. from the bookmarks feed) */
+  initialSaved?: boolean;
 }
 
-export default function ArticleCard({ article, showThumbnail = true }: ArticleCardProps) {
-  const [saved, setSaved] = useState(false);
+export default function ArticleCard({ article, showThumbnail = true, initialSaved = false }: ArticleCardProps) {
+  const [saved, setSaved] = useState(initialSaved);
   const [liked, setLiked] = useState(false);
   const [claps, setClaps] = useState(article.claps);
+  const { isLoggedIn } = useAuth();
+  const { openAuthModal } = useAuthGate();
+  const toggleBookmark = useToggleBookmark(article.id);
+
+  // Keep the button in sync when the DB bookmark state changes
+  useEffect(() => {
+    setSaved(initialSaved);
+  }, [initialSaved]);
 
   const handleClap = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -26,7 +39,13 @@ export default function ArticleCard({ article, showThumbnail = true }: ArticleCa
   const handleSave = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setSaved(v => !v);
+    if (!isLoggedIn) {
+      openAuthModal();
+      return;
+    }
+    const next = !saved;
+    setSaved(next);
+    toggleBookmark.mutate(next);
   };
 
   return (

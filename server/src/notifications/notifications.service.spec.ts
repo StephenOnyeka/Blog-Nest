@@ -173,7 +173,9 @@ describe('NotificationsService', () => {
         'notif-uuid-1',
       );
       expect(result).toEqual({ success: true });
-      expect(notificationRepoMock.remove).toHaveBeenCalledWith(mockNotification);
+      expect(notificationRepoMock.remove).toHaveBeenCalledWith(
+        mockNotification,
+      );
     });
   });
 

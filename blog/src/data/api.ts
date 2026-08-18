@@ -46,6 +46,8 @@ export interface ApiArticle {
   published_at: string | null;
   author_id: string;
   author: ApiAuthor;
+  claps: number;
+  comments: number;
   created_at: string;
   updated_at: string;
 }
@@ -55,6 +57,23 @@ export interface ArticleListResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface ApiComment {
+  id: string;
+  body: string;
+  created_at: string;
+  parent_id: string | null;
+  author: {
+    id: string | null;
+    name: string | null;
+    username: string | null;
+    avatar: string | null;
+  };
+}
+
+export interface BookmarkStatus {
+  bookmarked: boolean;
 }
 
 export interface ApiNotification {
@@ -211,6 +230,74 @@ export const deleteArticle = async (
   id: string,
 ): Promise<{ message: string }> => {
   const res = await api.delete<{ message: string }>(`/articles/${id}`);
+  return res.data;
+};
+
+// ─── Comments ───────────────────────────────────────────────────────────────
+
+/** List all comments for an article (public) */
+export const getArticleComments = async (articleId: string): Promise<ApiComment[]> => {
+  const res = await api.get<ApiComment[]>(`/articles/${articleId}/comments`);
+  return res.data;
+};
+
+/** Add a comment or reply to an article (auth required) */
+export const addComment = async (
+  articleId: string,
+  body: string,
+  parentId?: string,
+): Promise<ApiComment> => {
+  const res = await api.post<ApiComment>(`/articles/${articleId}/comments`, {
+    body,
+    parentId: parentId ?? undefined,
+  });
+  return res.data;
+};
+
+/** Increment clap count for an article (public) */
+export const clapArticle = async (
+  articleId: string,
+): Promise<{ success: boolean; claps: number }> => {
+  const res = await api.post<{ success: boolean; claps: number }>(
+    `/articles/${articleId}/clap`,
+  );
+  return res.data;
+};
+
+/** Delete a comment (auth required, author or article author) */
+export const deleteComment = async (
+  articleId: string,
+  commentId: string,
+): Promise<{ success: boolean }> => {
+  const res = await api.delete<{ success: boolean }>(
+    `/articles/${articleId}/comments/${commentId}`,
+  );
+  return res.data;
+};
+
+// ─── Bookmarks ───────────────────────────────────────────────────────────────
+
+/** Check whether the logged-in user has bookmarked an article */
+export const getBookmarkStatus = async (articleId: string): Promise<BookmarkStatus> => {
+  const res = await api.get<BookmarkStatus>(`/articles/${articleId}/bookmark`);
+  return res.data;
+};
+
+/** Bookmark an article (auth required) */
+export const bookmarkArticle = async (articleId: string): Promise<BookmarkStatus> => {
+  const res = await api.post<BookmarkStatus>(`/articles/${articleId}/bookmark`);
+  return res.data;
+};
+
+/** Remove a bookmark from an article (auth required) */
+export const unbookmarkArticle = async (articleId: string): Promise<BookmarkStatus> => {
+  const res = await api.delete<BookmarkStatus>(`/articles/${articleId}/bookmark`);
+  return res.data;
+};
+
+/** List articles bookmarked by the logged-in user */
+export const getMyBookmarkedArticles = async (): Promise<ApiArticle[]> => {
+  const res = await api.get<ApiArticle[]>("/articles/bookmarked");
   return res.data;
 };
 
