@@ -4,10 +4,8 @@ import {
   Home2,
   Edit,
   SearchNormal1,
-  Notification,
   Profile,
   Bookmark2,
-  Story,
 } from "iconsax-react";
 import { useAuth } from "../context/AuthContext";
 import { useAuthGate } from "../context/AuthGateContext";

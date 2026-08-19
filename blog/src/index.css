@@ -215,3 +215,49 @@ body {
   margin: 16px 0;
   display: block;
 }
+
+/* ─── Mobile editor (≤640px) ─────────────────────── */
+@media (max-width: 640px) {
+  /* Single-row, horizontally swipeable toolbar with comfortable touch targets */
+  .ql-toolbar.ql-snow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 8px 0 !important;
+  }
+
+  .ql-toolbar.ql-snow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ql-toolbar.ql-snow:after {
+    display: none !important;
+  }
+
+  .ql-toolbar.ql-snow .ql-formats {
+    margin-right: 0;
+    flex-shrink: 0;
+  }
+
+  .ql-toolbar.ql-snow button {
+    width: 30px;
+    height: 30px;
+  }
+
+  /* Slightly smaller body text and reduced editor min-height on small screens */
+  .ql-container.ql-snow,
+  .ql-editor,
+  .ql-editor.ql-blank::before {
+    font-size: 14px !important;
+  }
+
+  .ql-editor {
+    min-height: 320px;
+  }
+
+  .ql-editor .ql-video {
+    height: 220px;
+  }
+}

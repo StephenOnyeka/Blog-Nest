@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import {
@@ -344,9 +344,9 @@ export default function WritePage() {
           <p className="text-base text-neutral-500 max-w-[400px]">
             "{title}" has been published to BlogNest. Share it with the world!
           </p>
-          <div className="flex gap-3 mt-2">
+          <div className="flex flex-col sm:flex-row gap-3 mt-2 w-full sm:w-auto">
             <button
-              className="bg-green-700 text-white rounded-full px-6 py-2.5 text-[15px] font-semibold transition-colors font-sans hover:bg-green-800"
+              className="bg-green-700 text-white rounded-full px-6 py-2.5 text-[15px] font-semibold transition-colors font-sans hover:bg-green-800 w-full sm:w-auto flex items-center justify-center"
               onClick={() =>
                 navigate(`/article/${publishedArticleId || draft.id}`)
               }
@@ -354,7 +354,7 @@ export default function WritePage() {
               View story
             </button>
             <button
-              className="border border-neutral-200 rounded-full px-6 py-2.5 text-[15px] font-medium text-neutral-900 bg-transparent transition-colors hover:bg-neutral-50"
+              className="border border-neutral-200 rounded-full px-6 py-2.5 text-[15px] font-medium text-neutral-900 bg-transparent transition-colors hover:bg-neutral-50 w-full sm:w-auto flex items-center justify-center"
               onClick={() => navigate("/profile/me")}
             >
               Go to profile
@@ -397,11 +397,17 @@ export default function WritePage() {
               {words.toLocaleString()} words · {readMins} min read
             </span>
           )}
+          <Link
+            to="/stories"
+            className="text-sm text-neutral-500 hover:text-neutral-900 no-underline transition-colors shrink-0"
+          >
+            Drafts
+          </Link>
           <button
             title="Story settings"
             aria-label="Settings"
             onClick={() => setShowPublishPanel(true)}
-            className="bg-transparent border-none cursor-pointer flex items-center text-neutral-500 p-1 hover:text-neutral-900 transition-colors"
+            className="bg-transparent border-none cursor-pointer flex items-center text-neutral-500 p-2 sm:p-1 hover:text-neutral-900 transition-colors"
           >
             <Setting2 size={20} variant="Linear" color="currentColor" />
           </button>
