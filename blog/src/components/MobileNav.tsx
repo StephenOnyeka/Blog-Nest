@@ -23,10 +23,10 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", icon: Home2, to: "/" },
   { label: "Library", icon: Bookmark2, to: "/library" },
-  { label: "Stories", icon: Story, to: "/stories" },
+  // { label: "Stories", icon: Story, to: "/stories" },
   { label: "Write", icon: Edit, action: "write" },
   { label: "Search", icon: SearchNormal1, to: "/search" },
-  { label: "Notify", icon: Notification, action: "notifications" },
+  // { label: "Notify", icon: Notification, action: "notifications" },
   { label: "Profile", icon: Profile, action: "profile" },
 ];
 

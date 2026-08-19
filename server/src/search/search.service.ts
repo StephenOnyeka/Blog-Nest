@@ -10,13 +10,20 @@ import {
   type Orama,
 } from '@orama/orama';
 import { Article } from '../entities/article.entity';
+import { Profile } from '../entities/profile.entity';
 import { embedDocument, embedText, EMBEDDING_DIM } from './embed';
 
-const SEARCH_PROPERTIES: Array<
+const ARTICLE_PROPERTIES: Array<
   'title' | 'subtitle' | 'body' | 'tags' | 'authorName'
 > = ['title', 'subtitle', 'body', 'tags', 'authorName'];
 
-const schema = {
+const PERSON_PROPERTIES: Array<'name' | 'username' | 'bio'> = [
+  'name',
+  'username',
+  'bio',
+];
+
+const articleSchema = {
   id: 'string',
   title: 'string',
   subtitle: 'string',
@@ -35,17 +42,20 @@ const schema = {
   embedding: `vector[${EMBEDDING_DIM}]`,
 } as const;
 
-type SearchSchema = typeof schema;
+const personSchema = {
+  id: 'string',
+  name: 'string',
+  username: 'string',
+  bio: 'string',
+  avatar: 'string',
+  followers_count: 'number',
+  embedding: `vector[${EMBEDDING_DIM}]`,
+} as const;
 
-export type SearchMode = 'fulltext' | 'hybrid' | 'vector';
+type ArticleSchema = typeof articleSchema;
+type PersonSchema = typeof personSchema;
 
-export interface SearchOptions {
-  mode?: SearchMode;
-  limit?: number;
-  offset?: number;
-}
-
-interface SearchIndexDoc {
+interface ArticleIndexDoc {
   id: string;
   title: string;
   subtitle: string;
@@ -61,6 +71,16 @@ interface SearchIndexDoc {
   authorName: string;
   authorUsername: string;
   authorAvatar: string;
+  embedding: number[];
+}
+
+interface PersonIndexDoc {
+  id: string;
+  name: string;
+  username: string;
+  bio: string;
+  avatar: string;
+  followers_count: number;
   embedding: number[];
 }
 
@@ -91,14 +111,32 @@ export interface SearchResultItem {
   score: number;
 }
 
+export interface SearchPersonResult {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string | null;
+  bio: string | null;
+  followers: number;
+  score: number;
+}
+
+export interface SearchOptions {
+  limit?: number;
+  offset?: number;
+}
+
 @Injectable()
 export class SearchService implements OnModuleInit {
   private readonly logger = new Logger(SearchService.name);
-  private db: Orama<SearchSchema> | null = null;
+  private articleDb: Orama<ArticleSchema> | null = null;
+  private personDb: Orama<PersonSchema> | null = null;
 
   constructor(
     @InjectRepository(Article)
     private readonly articleRepo: Repository<Article>,
+    @InjectRepository(Profile)
+    private readonly profileRepo: Repository<Profile>,
   ) {}
 
   async onModuleInit() {
@@ -113,33 +151,49 @@ export class SearchService implements OnModuleInit {
     }
   }
 
-  /** Rebuild the index from every published article in the database */
+  /** Rebuild both indexes from the database (published articles + all profiles) */
   async refresh() {
-    const db = create({ schema });
+    const articleDb = create({ schema: articleSchema });
     const articles = await this.articleRepo.find({
       where: { is_draft: false },
       relations: { author: true },
       order: { created_at: 'DESC' },
     });
-
     if (articles.length > 0) {
       await Promise.resolve(
         insertMultiple(
-          db,
-          articles.map((a) => this.toDoc(a)),
+          articleDb,
+          articles.map((a) => this.toArticleDoc(a)),
           100,
         ),
       );
     }
+    this.articleDb = articleDb;
 
-    this.db = db;
-    this.logger.log(`Indexed ${articles.length} published articles`);
-    return { indexed: articles.length };
+    const personDb = create({ schema: personSchema });
+    const profiles = await this.profileRepo.find({
+      order: { followers_count: 'DESC' },
+    });
+    if (profiles.length > 0) {
+      await Promise.resolve(
+        insertMultiple(
+          personDb,
+          profiles.map((p) => this.toPersonDoc(p)),
+          100,
+        ),
+      );
+    }
+    this.personDb = personDb;
+
+    this.logger.log(
+      `Indexed ${articles.length} published articles and ${profiles.length} people`,
+    );
+    return { indexed: articles.length, people: profiles.length };
   }
 
   /** Re-index a single article (or drop it if it's now a draft) */
   async upsertArticle(publicId: string) {
-    if (!this.db) return;
+    if (!this.articleDb) return;
     const article = await this.articleRepo.findOne({
       where: { public_id: publicId },
       relations: { author: true },
@@ -149,78 +203,97 @@ export class SearchService implements OnModuleInit {
       await this.removeArticle(publicId);
       return;
     }
-    await Promise.resolve(upsert(this.db, this.toDoc(article)));
+    await Promise.resolve(upsert(this.articleDb, this.toArticleDoc(article)));
   }
 
   /** Remove an article from the index */
   async removeArticle(publicId: string) {
-    if (!this.db) return;
+    if (!this.articleDb) return;
     try {
-      await Promise.resolve(remove(this.db, publicId));
+      await Promise.resolve(remove(this.articleDb, publicId));
     } catch {
       /* not present — fine */
     }
   }
 
-  /** Run a search across the indexed articles */
-  async search(
-    q: string,
-    { mode = 'hybrid', limit = 20, offset = 0 }: SearchOptions = {},
-  ) {
-    const db = this.db ?? (await this.rebuild());
+  /** Re-index a single profile (name, bio, avatar, follower counts) */
+  async upsertProfile(publicId: string) {
+    if (!this.personDb) return;
+    const profile = await this.profileRepo.findOne({
+      where: { public_id: publicId },
+    });
+    if (!profile) return;
+    await Promise.resolve(upsert(this.personDb, this.toPersonDoc(profile)));
+  }
+
+  /** Remove a profile from the index */
+  async removeProfile(publicId: string) {
+    if (!this.personDb) return;
+    try {
+      await Promise.resolve(remove(this.personDb, publicId));
+    } catch {
+      /* not present — fine */
+    }
+  }
+
+  /** Hybrid search (full-text + vector) across articles and people by default */
+  async search(q: string, { limit = 20, offset = 0 }: SearchOptions = {}) {
     const term = (q ?? '').trim();
     if (!term) {
-      return { articles: [], total: 0, mode, limit, offset };
+      return {
+        articles: [],
+        people: [],
+        total_articles: 0,
+        total_people: 0,
+        mode: 'hybrid',
+        limit,
+        offset,
+      };
     }
 
     const safeLimit = Math.min(Math.max(limit, 1), 50);
     const safeOffset = Math.max(offset, 0);
     const vector = { value: embedText(term), property: 'embedding' };
 
-    const params =
-      mode === 'vector'
-        ? {
-            mode: 'vector' as const,
-            vector,
-            limit: safeLimit,
-            offset: safeOffset,
-          }
-        : mode === 'hybrid'
-          ? {
-              mode: 'hybrid' as const,
-              term,
-              vector,
-              properties: SEARCH_PROPERTIES,
-              limit: safeLimit,
-              offset: safeOffset,
-            }
-          : {
-              term,
-              properties: SEARCH_PROPERTIES,
-              limit: safeLimit,
-              offset: safeOffset,
-            };
+    const articlesRes = this.articleDb
+      ? await search(this.articleDb, {
+          mode: 'hybrid',
+          term,
+          properties: ARTICLE_PROPERTIES,
+          vector,
+          limit: safeLimit,
+          offset: safeOffset,
+        })
+      : null;
 
-    const results = await search(db, params);
+    const peopleRes = this.personDb
+      ? await search(this.personDb, {
+          mode: 'hybrid',
+          term,
+          properties: PERSON_PROPERTIES,
+          vector,
+          limit: safeLimit,
+          offset: safeOffset,
+        })
+      : null;
 
     return {
-      articles: (results.hits ?? []).map((h) =>
-        this.toApiArticle(h.document as SearchIndexDoc, h.score),
+      articles: (articlesRes?.hits ?? []).map((h) =>
+        this.toApiArticle(h.document as ArticleIndexDoc, h.score),
       ),
-      total: results.count ?? 0,
-      mode,
+      people: (peopleRes?.hits ?? []).map((h) =>
+        this.toApiPerson(h.document as PersonIndexDoc, h.score),
+      ),
+      total_articles: articlesRes?.count ?? 0,
+      total_people: peopleRes?.count ?? 0,
+      mode: 'hybrid',
       limit: safeLimit,
       offset: safeOffset,
     };
   }
 
-  private async rebuild() {
-    await this.refresh();
-    return this.db!;
-  }
-
   /** Map a stored article into the frontend-facing article shape (with score) */
-  private toApiArticle(doc: SearchIndexDoc, score: number): SearchResultItem {
+  private toApiArticle(doc: ArticleIndexDoc, score: number): SearchResultItem {
     return {
       id: doc.id,
       title: doc.title,
@@ -249,8 +322,21 @@ export class SearchService implements OnModuleInit {
     };
   }
 
+  /** Map a stored profile into the frontend-facing person shape (with score) */
+  private toApiPerson(doc: PersonIndexDoc, score: number): SearchPersonResult {
+    return {
+      id: doc.id,
+      name: doc.name,
+      username: doc.username,
+      avatar: doc.avatar || null,
+      bio: doc.bio || null,
+      followers: doc.followers_count,
+      score,
+    };
+  }
+
   /** Build the searchable document for a stored article */
-  private toDoc(a: Article): SearchIndexDoc {
+  private toArticleDoc(a: Article): ArticleIndexDoc {
     return {
       id: a.public_id,
       title: a.title,
@@ -268,6 +354,19 @@ export class SearchService implements OnModuleInit {
       authorUsername: a.author?.username ?? '',
       authorAvatar: a.author?.avatar ?? '',
       embedding: embedDocument(a.title, a.subtitle ?? '', a.body, a.tags ?? []),
+    };
+  }
+
+  /** Build the searchable document for a stored profile */
+  private toPersonDoc(p: Profile): PersonIndexDoc {
+    return {
+      id: p.public_id,
+      name: p.name,
+      username: p.username,
+      bio: p.bio ?? '',
+      avatar: p.avatar ?? '',
+      followers_count: p.followers_count,
+      embedding: embedText([p.name, p.username, p.bio ?? ''].join(' ')),
     };
   }
 }

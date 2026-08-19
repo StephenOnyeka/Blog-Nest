@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
 import { SearchService } from './search.service';
-import type { SearchMode } from './search.service';
 
 @ApiTags('Search')
 @Controller('search')
@@ -17,29 +16,21 @@ export class SearchController {
 
   @Get()
   @ApiOperation({
-    summary:
-      'Search published articles with full-text, vector, or hybrid search',
+    summary: 'Hybrid search (full-text + vector) across articles and people',
   })
   @ApiQuery({ name: 'q', required: true, type: String })
-  @ApiQuery({
-    name: 'mode',
-    required: false,
-    enum: ['fulltext', 'hybrid', 'vector'],
-    description: 'Search mode. Defaults to "hybrid".',
-  })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 20 })
   @ApiQuery({ name: 'offset', required: false, type: Number, example: 0 })
   @ApiResponse({
     status: 200,
-    description: 'Matching articles and total count',
+    description: 'Matching articles, people, and per-section totals',
   })
   async search(
     @Query('q') q: string,
-    @Query('mode') mode: SearchMode = 'hybrid',
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
     @Query('offset', new DefaultValuePipe(0), ParseIntPipe) offset: number,
   ) {
-    return this.searchService.search(q ?? '', { mode, limit, offset });
+    return this.searchService.search(q ?? '', { limit, offset });
   }
 
   @Post('reindex')

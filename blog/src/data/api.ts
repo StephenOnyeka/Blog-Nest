@@ -197,26 +197,34 @@ export interface CreateArticlePayload {
 
 export type UpdateArticlePayload = Partial<CreateArticlePayload>;
 
-/** Search modes supported by the backend Orama index */
-export type SearchMode = "fulltext" | "hybrid" | "vector";
+export interface SearchPerson {
+  id: string;
+  name: string;
+  username: string;
+  avatar: string | null;
+  bio: string | null;
+  followers: number;
+  score: number;
+}
 
 export interface SearchResponse {
   articles: ApiArticle[];
-  total: number;
+  people: SearchPerson[];
+  total_articles: number;
+  total_people: number;
   mode: string;
   limit: number;
   offset: number;
 }
 
-/** Search published articles via the backend Orama index (hybrid by default) */
-export const searchArticles = async (
+/** Search the whole database (published articles + people) via the backend Orama index (hybrid by default) */
+export const searchAll = async (
   q: string,
-  mode: SearchMode = "hybrid",
   limit = 20,
   offset = 0,
 ): Promise<SearchResponse> => {
   const res = await api.get<SearchResponse>("/search", {
-    params: { q, mode, limit, offset },
+    params: { q, limit, offset },
   });
   return res.data;
 };

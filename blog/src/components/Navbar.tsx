@@ -37,8 +37,8 @@ export default function Navbar() {
             BlogNest
           </Link>
 
-          {/* Search (hidden on mobile — accessible via bottom nav) */}
-          <div className="hidden sm:flex flex-1 max-w-[280px] items-center gap-2 bg-neutral-50 rounded-full px-4 py-2 text-neutral-500 text-sm transition-colors hover:bg-neutral-100">
+          {/* Search (visible on all screens) */}
+          <div className="flex flex-1 max-w-[280px] items-center gap-2 bg-neutral-50 rounded-full px-4 py-2 text-neutral-500 text-sm transition-colors hover:bg-neutral-100">
             <SearchNormal1 size={16} variant="Linear" color="currentColor" />
             <input
               className="border-none bg-transparent outline-none text-sm text-neutral-900 w-full font-sans placeholder-neutral-500"

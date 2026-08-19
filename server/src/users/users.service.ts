@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Profile } from '../entities/profile.entity';
 import { Follow } from '../entities/follow.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SearchService } from '../search/search.service';
 
 const isUuid = (str: string) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
@@ -20,6 +21,7 @@ export class UsersService {
     @InjectRepository(Follow)
     private readonly followRepo: Repository<Follow>,
     private readonly notificationsService: NotificationsService,
+    private readonly searchService: SearchService,
   ) {}
 
   private toPublicUser(profile: Profile) {
@@ -87,6 +89,8 @@ export class UsersService {
 
     Object.assign(profile, updates);
     await this.profileRepo.save(profile);
+    // Keep the search index in sync
+    await this.searchService.upsertProfile(profile.public_id);
     return this.toPublicUser(profile);
   }
 
@@ -122,6 +126,10 @@ export class UsersService {
       `${follower.name} (@${follower.username}) started following you.`,
     );
 
+    // Keep follower counts in the search index fresh
+    await this.searchService.upsertProfile(follower.public_id);
+    await this.searchService.upsertProfile(following.public_id);
+
     return { message: 'Followed successfully' };
   }
 
@@ -144,6 +152,10 @@ export class UsersService {
       'followers_count',
       1,
     );
+
+    // Keep follower counts in the search index fresh
+    await this.searchService.upsertProfile(follower.public_id);
+    await this.searchService.upsertProfile(following.public_id);
 
     return { message: 'Unfollowed successfully' };
   }

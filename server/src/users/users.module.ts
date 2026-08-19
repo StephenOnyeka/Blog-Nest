@@ -5,9 +5,14 @@ import { UsersController } from './users.controller';
 import { Profile } from '../entities/profile.entity';
 import { Follow } from '../entities/follow.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SearchModule } from '../search/search.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Profile, Follow]), NotificationsModule],
+  imports: [
+    TypeOrmModule.forFeature([Profile, Follow]),
+    NotificationsModule,
+    SearchModule,
+  ],
   controllers: [UsersController],
   providers: [UsersService],
   exports: [UsersService],
