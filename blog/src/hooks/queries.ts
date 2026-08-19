@@ -29,6 +29,7 @@ import {
   bookmarkArticle,
   unbookmarkArticle,
   getMyBookmarkedArticles,
+  getRelatedArticles,
   getNotifications,
   getUnreadNotificationCount,
   markAllNotificationsRead,
@@ -50,6 +51,7 @@ export const queryKeys = {
   articleComments: (articleId: string) => ["article", articleId, "comments"] as const,
   bookmarkStatus: (articleId: string) => ["bookmark", articleId] as const,
   myBookmarks: ["bookmarks"] as const,
+  relatedArticles: (articleId: string) => ["article", articleId, "related"] as const,
   notifications: ["notifications"] as const,
   unreadNotificationCount: ["notifications", "unread-count"] as const,
 };
@@ -200,6 +202,16 @@ export function useMyBookmarks(enabled: boolean) {
     queryKey: queryKeys.myBookmarks,
     queryFn: getMyBookmarkedArticles,
     enabled,
+  });
+}
+
+/** Related articles for the article page (by author + tags) */
+export function useRelatedArticles(articleId: string | undefined) {
+  return useQuery({
+    queryKey: queryKeys.relatedArticles(articleId ?? ""),
+    queryFn: () => getRelatedArticles(articleId as string),
+    enabled: !!articleId,
+    retry: false,
   });
 }
 

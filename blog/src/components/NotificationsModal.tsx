@@ -83,8 +83,8 @@ export default function NotificationsModal({ isOpen, onClose }: NotificationsMod
     if (!notif.is_read) {
       markOneRead.mutate(notif.id);
     }
-    if (notif.article_id || notif.article?.id) {
-      const articleId = notif.article?.id || notif.article_id;
+    const articleId = notif.article?.id || notif.article_id;
+    if (articleId) {
       onClose();
       navigate(`/article/${articleId}`);
     }

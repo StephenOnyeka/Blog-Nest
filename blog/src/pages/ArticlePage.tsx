@@ -8,6 +8,7 @@ import {
 import PageTemplate from '../components/PageTemplate';
 import ArticleCard from '../components/ArticleCard';
 import { ARTICLES, formatClaps } from '../data/mockData';
+// ARTICLES is only used as a fallback when the API server is unreachable
 import { getUserArticles } from '../data/articleStore';
 import { getArticleById, type ApiArticle } from '../data/api';
 import { normalizeApiArticle } from '../data/normalize';
@@ -18,6 +19,7 @@ import {
   useBookmarkStatus,
   useToggleBookmark,
   useClapArticle,
+  useRelatedArticles,
 } from '../hooks/queries';
 import { useAuth } from '../context/AuthContext';
 import { useAuthGate } from '../context/AuthGateContext';
@@ -61,6 +63,11 @@ export default function ArticlePage() {
   // Clap (API-backed for real articles)
   const clapMut = useClapArticle(isApiArticle && article ? article.id : undefined);
 
+  // Related articles from the API
+  const { data: apiRelated } = useRelatedArticles(
+    isApiArticle && article ? article.id : undefined,
+  );
+
   useEffect(() => {
     let isMounted = true;
     setIsLoading(true);
@@ -68,21 +75,26 @@ export default function ArticlePage() {
     const loadArticle = async () => {
       if (!id) return;
       try {
-        // Only attempt to fetch from API if the ID is a valid UUID
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-        if (!isUuid) throw new Error("Not a UUID, fallback to local/mock");
-        
         const apiArticle: ApiArticle = await getArticleById(id);
         if (!isMounted) return;
         setArticle(normalizeApiArticle(apiArticle));
         setClaps(apiArticle.claps);
         setIsApiArticle(true);
-      } catch {
+      } catch (err: any) {
         if (!isMounted) return;
-        const local = ARTICLES.find(a => a.id === id) ?? getUserArticles().find(a => a.id === id);
-        setArticle(local ?? null);
-        setIsApiArticle(false);
-        if (local) setClaps(local.claps);
+        // Only fall back to local/mock data when the API server is
+        // unreachable (network error). HTTP errors like 404/500 mean the
+        // server IS running but this article doesn't exist in the DB.
+        const serverDown = !err?.response;
+        if (serverDown) {
+          const local = ARTICLES.find(a => a.id === id) ?? getUserArticles().find(a => a.id === id);
+          setArticle(local ?? null);
+          setIsApiArticle(false);
+          if (local) setClaps(local.claps);
+        } else {
+          setArticle(null);
+          setIsApiArticle(false);
+        }
       } finally {
         if (isMounted) setIsLoading(false);
       }
@@ -220,13 +232,12 @@ export default function ArticlePage() {
     return parse(cleanHtml);
   };
 
-  const moreArticles = ARTICLES.filter(
-    a => a.id !== article.id && a.author.id === article.author.id
-  ).slice(0, 2);
+  // Related articles: prefer API data, fall back to mock only when server is down
+  const moreFromAuthor = apiRelated?.moreFromAuthor ?? [];
+  const relatedByTags = apiRelated?.relatedByTags ?? [];
 
-  const relatedArticles = ARTICLES.filter(
-    a => a.id !== article.id && a.tags.some(t => article.tags.includes(t))
-  ).slice(0, 3);
+  const showMoreFromAuthor = moreFromAuthor.length > 0;
+  const showRelatedByTags = relatedByTags.length > 0;
 
   return (
     <PageTemplate>
@@ -500,24 +511,24 @@ export default function ArticlePage() {
         </div>
 
         {/* More from author */}
-        {moreArticles.length > 0 && (
+        {showMoreFromAuthor && (
           <div className="mt-12 pt-8 border-t border-neutral-100">
             <h2 className="text-xl font-bold text-neutral-900 mb-6">More from {article.author.name}</h2>
             <div className="flex flex-col">
-              {moreArticles.map(a => (
-                <ArticleCard key={a.id} article={a} />
+              {moreFromAuthor.map((a) => (
+                <ArticleCard key={a.id} article={normalizeApiArticle(a)} />
               ))}
             </div>
           </div>
         )}
 
         {/* Related reading */}
-        {relatedArticles.length > 0 && (
+        {showRelatedByTags && (
           <div className="mt-12 pt-8 border-t border-neutral-100">
             <h2 className="text-xl font-bold text-neutral-900 mb-6">Recommended Reading</h2>
             <div className="flex flex-col">
-              {relatedArticles.map(a => (
-                <ArticleCard key={a.id} article={a} />
+              {relatedByTags.map((a) => (
+                <ArticleCard key={a.id} article={normalizeApiArticle(a)} />
               ))}
             </div>
           </div>

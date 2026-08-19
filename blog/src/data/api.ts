@@ -301,6 +301,21 @@ export const getMyBookmarkedArticles = async (): Promise<ApiArticle[]> => {
   return res.data;
 };
 
+/** Get articles related to a given article (by author and tags) */
+export interface RelatedArticlesResponse {
+  moreFromAuthor: ApiArticle[];
+  relatedByTags: ApiArticle[];
+}
+
+export const getRelatedArticles = async (
+  articleId: string,
+): Promise<RelatedArticlesResponse> => {
+  const res = await api.get<RelatedArticlesResponse>(
+    `/articles/${articleId}/related`,
+  );
+  return res.data;
+};
+
 // ─── Notifications ─────────────────────────────────────────────────────────────
 
 /** Get all notifications for the logged-in user */

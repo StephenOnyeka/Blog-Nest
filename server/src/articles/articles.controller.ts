@@ -160,6 +160,15 @@ export class ArticlesController {
     return this.articlesService.unbookmark(id, req.user.userId);
   }
 
+  @Get(':id/related')
+  @ApiOperation({ summary: 'Get articles related by author or tags' })
+  @ApiParam({ name: 'id', description: 'Article public UUID' })
+  @ApiResponse({ status: 200, description: 'Related articles split by author and tags' })
+  @ApiResponse({ status: 404, description: 'Article not found' })
+  async getRelated(@Param('id') id: string) {
+    return this.articlesService.getRelated(id);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get single article details by UUID' })
   @ApiParam({ name: 'id', description: 'Article public UUID' })

@@ -462,6 +462,55 @@ export class ArticlesService {
     return { bookmarked: false };
   }
 
+  // ─── Related articles ──────────────────────────────────────────────────────
+
+  /** Return articles related to the given one, split by author-same and tag-match. */
+  async getRelated(publicId: string) {
+    assertUuid(publicId, 'Article');
+    const article = await this.articleRepo.findOne({
+      where: { public_id: publicId },
+      relations: { author: true },
+    });
+    if (!article) throw new NotFoundException('Article not found');
+
+    // 1) More from same author (up to 3, newest first)
+    const moreFromAuthor = await this.articleRepo.find({
+      where: {
+        author_id: article.author_id,
+        is_draft: false,
+      },
+      relations: { author: true },
+      order: { created_at: 'DESC' },
+      take: 4,
+    });
+    const authorArticles = moreFromAuthor
+      .filter((a) => a.public_id !== publicId)
+      .slice(0, 3)
+      .map((a) => this.mapToFrontendArticle(a));
+
+    // 2) Related by tags (up to 3, newest first, excluding current + author picks)
+    const authorIds = new Set(authorArticles.map((a) => a.id));
+    let tagRelated: ReturnType<typeof this.mapToFrontendArticle>[] = [];
+    if (article.tags && article.tags.length > 0) {
+      const tagResults = await this.articleRepo
+        .createQueryBuilder('article')
+        .leftJoinAndSelect('article.author', 'author')
+        .where('article.is_draft = :isDraft', { isDraft: false })
+        .andWhere('article.public_id != :currentId', { currentId: publicId })
+        .andWhere(':tags && article.tags', { tags: article.tags })
+        .orderBy('article.created_at', 'DESC')
+        .take(10)
+        .getMany();
+
+      tagRelated = tagResults
+        .filter((a) => !authorIds.has(a.public_id))
+        .slice(0, 3)
+        .map((a) => this.mapToFrontendArticle(a));
+    }
+
+    return { moreFromAuthor, relatedByTags: tagRelated };
+  }
+
   /** List articles bookmarked by a user (newest bookmark first) */
   async getBookmarkedArticles(userPublicId: string) {
     const user = await this.profileRepo.findOne({
