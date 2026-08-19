@@ -245,7 +245,9 @@ export const deleteArticle = async (
 // ─── Comments ───────────────────────────────────────────────────────────────
 
 /** List all comments for an article (public) */
-export const getArticleComments = async (articleId: string): Promise<ApiComment[]> => {
+export const getArticleComments = async (
+  articleId: string,
+): Promise<ApiComment[]> => {
   const res = await api.get<ApiComment[]>(`/articles/${articleId}/comments`);
   return res.data;
 };
@@ -267,9 +269,11 @@ export const addComment = async (
 export const clapArticle = async (
   articleId: string,
 ): Promise<{ success: boolean; claps: number; is_liked?: boolean }> => {
-  const res = await api.post<{ success: boolean; claps: number; is_liked?: boolean }>(
-    `/articles/${articleId}/clap`,
-  );
+  const res = await api.post<{
+    success: boolean;
+    claps: number;
+    is_liked?: boolean;
+  }>(`/articles/${articleId}/clap`);
   return res.data;
 };
 
@@ -287,20 +291,28 @@ export const deleteComment = async (
 // ─── Bookmarks ───────────────────────────────────────────────────────────────
 
 /** Check whether the logged-in user has bookmarked an article */
-export const getBookmarkStatus = async (articleId: string): Promise<BookmarkStatus> => {
+export const getBookmarkStatus = async (
+  articleId: string,
+): Promise<BookmarkStatus> => {
   const res = await api.get<BookmarkStatus>(`/articles/${articleId}/bookmark`);
   return res.data;
 };
 
 /** Bookmark an article (auth required) */
-export const bookmarkArticle = async (articleId: string): Promise<BookmarkStatus> => {
+export const bookmarkArticle = async (
+  articleId: string,
+): Promise<BookmarkStatus> => {
   const res = await api.post<BookmarkStatus>(`/articles/${articleId}/bookmark`);
   return res.data;
 };
 
 /** Remove a bookmark from an article (auth required) */
-export const unbookmarkArticle = async (articleId: string): Promise<BookmarkStatus> => {
-  const res = await api.delete<BookmarkStatus>(`/articles/${articleId}/bookmark`);
+export const unbookmarkArticle = async (
+  articleId: string,
+): Promise<BookmarkStatus> => {
+  const res = await api.delete<BookmarkStatus>(
+    `/articles/${articleId}/bookmark`,
+  );
   return res.data;
 };
 

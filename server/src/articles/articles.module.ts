@@ -14,7 +14,14 @@ import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Article, Profile, Follow, Comment, Bookmark, Clap]),
+    TypeOrmModule.forFeature([
+      Article,
+      Profile,
+      Follow,
+      Comment,
+      Bookmark,
+      Clap,
+    ]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

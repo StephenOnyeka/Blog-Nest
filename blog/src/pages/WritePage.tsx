@@ -88,17 +88,20 @@ export default function WritePage() {
   const { user, isLoggedIn } = useAuth();
 
   // Active author = logged-in user (avatar from their profile / avatar modal)
-  const activeAuthor = isLoggedIn && user
-    ? {
-        id: user.id,
-        name: user.name,
-        username: user.username,
-        avatar: user.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username || 'me'}`,
-        bio: user.bio || "",
-        followers: user.followersCount || 0,
-        following: user.followingCount || 0,
-      }
-    : CURRENT_USER;
+  const activeAuthor =
+    isLoggedIn && user
+      ? {
+          id: user.id,
+          name: user.name,
+          username: user.username,
+          avatar:
+            user.avatar ||
+            `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username || "me"}`,
+          bio: user.bio || "",
+          followers: user.followersCount || 0,
+          following: user.followingCount || 0,
+        }
+      : CURRENT_USER;
 
   // Load draft from store or create new one
   const [draft, setDraft] = useState<Article>(() => {
@@ -122,7 +125,9 @@ export default function WritePage() {
     "draft",
   );
   const [published, setPublished] = useState(false);
-  const [publishedArticleId, setPublishedArticleId] = useState<string | null>(null);
+  const [publishedArticleId, setPublishedArticleId] = useState<string | null>(
+    null,
+  );
 
   // Id of the article already saved on the backend (a draft or a published
   // story being edited). `null` means it only exists locally so far.
@@ -236,7 +241,9 @@ export default function WritePage() {
         setPublished(true);
         return;
       } catch (err: any) {
-        toast.error(err.response?.data?.message || "Failed to publish. Please try again.");
+        toast.error(
+          err.response?.data?.message || "Failed to publish. Please try again.",
+        );
         return;
       }
     }
@@ -290,7 +297,10 @@ export default function WritePage() {
         setSaveStatus("saved");
         toast.success("Draft saved to your profile");
       } catch (err: any) {
-        toast.error(err.response?.data?.message || "Failed to save draft. Please try again.");
+        toast.error(
+          err.response?.data?.message ||
+            "Failed to save draft. Please try again.",
+        );
       }
       return;
     }
@@ -337,7 +347,9 @@ export default function WritePage() {
           <div className="flex gap-3 mt-2">
             <button
               className="bg-green-700 text-white rounded-full px-6 py-2.5 text-[15px] font-semibold transition-colors font-sans hover:bg-green-800"
-              onClick={() => navigate(`/article/${publishedArticleId || draft.id}`)}
+              onClick={() =>
+                navigate(`/article/${publishedArticleId || draft.id}`)
+              }
             >
               View story
             </button>

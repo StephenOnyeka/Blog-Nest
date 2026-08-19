@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useAuthGate } from '../context/AuthGateContext';
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useAuthGate } from "../context/AuthGateContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -14,7 +14,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
-      navigate('/', { replace: true });
+      navigate("/", { replace: true });
       openAuthModal();
     }
   }, [isLoading, isLoggedIn, navigate, openAuthModal]);

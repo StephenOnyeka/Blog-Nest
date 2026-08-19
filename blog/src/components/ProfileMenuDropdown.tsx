@@ -171,7 +171,9 @@ export default function ProfileMenuDropdown({
         <span>·</span>
         <span className="hover:text-neutral-600 cursor-pointer">Terms</span>
         <span>·</span>
-        <span className="hover:text-neutral-600 cursor-pointer">Text to speech</span>
+        <span className="hover:text-neutral-600 cursor-pointer">
+          Text to speech
+        </span>
         <span>·</span>
         <span className="hover:text-neutral-600 cursor-pointer">More</span>
       </div>

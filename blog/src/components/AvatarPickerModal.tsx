@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { createAvatar } from '@dicebear/core';
+import React, { useState, useMemo } from "react";
+import { createAvatar } from "@dicebear/core";
 import {
   lorelei,
   loreleiNeutral,
@@ -17,8 +17,8 @@ import {
   croodles,
   bigEars,
   toonHead,
-} from '@dicebear/collection';
-import { CloseCircle, GalleryExport, TickCircle } from 'iconsax-react';
+} from "@dicebear/collection";
+import { CloseCircle, GalleryExport, TickCircle } from "iconsax-react";
 
 interface AvatarPickerModalProps {
   currentAvatar?: string | null;
@@ -28,22 +28,22 @@ interface AvatarPickerModalProps {
 
 // 16 avatar definitions — all human person styles (no robots/emojis/abstracts)
 const AVATAR_STYLES = [
-  { style: lorelei, seed: 'Felix', label: 'Lorelei' },
-  { style: avataaars, seed: 'Aneka', label: 'Avataaars' },
-  { style: micah, seed: 'Zoe', label: 'Micah' },
-  { style: personas, seed: 'Maya', label: 'Personas' },
-  { style: adventurer, seed: 'Oliver', label: 'Adventurer' },
-  { style: openPeeps, seed: 'Sasha', label: 'Open Peeps' },
-  { style: notionists, seed: 'Alex', label: 'Notionists' },
-  { style: miniavs, seed: 'Nina', label: 'Miniavs' },
-  { style: dylan, seed: 'Dylan', label: 'Dylan' },
-  { style: croodles, seed: 'Riley', label: 'Croodles' },
-  { style: bigEars, seed: 'Emma', label: 'Big Ears' },
-  { style: toonHead, seed: 'Kai', label: 'Toon Head' },
-  { style: loreleiNeutral, seed: 'Sam', label: 'Lorelei Neutral' },
-  { style: avataaarsNeutral, seed: 'Jordan', label: 'Avataaars Neutral' },
-  { style: adventurerNeutral, seed: 'Taylor', label: 'Adventurer Neutral' },
-  { style: notionistsNeutral, seed: 'Casey', label: 'Notionists Neutral' },
+  { style: lorelei, seed: "Felix", label: "Lorelei" },
+  { style: avataaars, seed: "Aneka", label: "Avataaars" },
+  { style: micah, seed: "Zoe", label: "Micah" },
+  { style: personas, seed: "Maya", label: "Personas" },
+  { style: adventurer, seed: "Oliver", label: "Adventurer" },
+  { style: openPeeps, seed: "Sasha", label: "Open Peeps" },
+  { style: notionists, seed: "Alex", label: "Notionists" },
+  { style: miniavs, seed: "Nina", label: "Miniavs" },
+  { style: dylan, seed: "Dylan", label: "Dylan" },
+  { style: croodles, seed: "Riley", label: "Croodles" },
+  { style: bigEars, seed: "Emma", label: "Big Ears" },
+  { style: toonHead, seed: "Kai", label: "Toon Head" },
+  { style: loreleiNeutral, seed: "Sam", label: "Lorelei Neutral" },
+  { style: avataaarsNeutral, seed: "Jordan", label: "Avataaars Neutral" },
+  { style: adventurerNeutral, seed: "Taylor", label: "Adventurer Neutral" },
+  { style: notionistsNeutral, seed: "Casey", label: "Notionists Neutral" },
 ];
 
 /** Helper to generate base64 SVG Data URI from DiceBear avatar */
@@ -69,7 +69,7 @@ export default function AvatarPickerModal({
   }, []);
 
   const [selectedBase64, setSelectedBase64] = useState<string>(
-    currentAvatar || avatarList[0].base64
+    currentAvatar || avatarList[0].base64,
   );
   const [isUploading, setIsUploading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -80,13 +80,15 @@ export default function AvatarPickerModal({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setCustomFileError('Please select a valid image file (PNG, JPG, WEBP, SVG)');
+    if (!file.type.startsWith("image/")) {
+      setCustomFileError(
+        "Please select a valid image file (PNG, JPG, WEBP, SVG)",
+      );
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      setCustomFileError('Image file size must be less than 5MB');
+      setCustomFileError("Image file size must be less than 5MB");
       return;
     }
 
@@ -102,7 +104,7 @@ export default function AvatarPickerModal({
       setIsUploading(false);
     };
     reader.onerror = () => {
-      setCustomFileError('Failed to read file');
+      setCustomFileError("Failed to read file");
       setIsUploading(false);
     };
     reader.readAsDataURL(file);
@@ -115,7 +117,7 @@ export default function AvatarPickerModal({
       await onSelect(selectedBase64);
       onClose();
     } catch (err) {
-      console.error('Failed to update avatar:', err);
+      console.error("Failed to update avatar:", err);
     } finally {
       setIsSaving(false);
     }
@@ -127,7 +129,9 @@ export default function AvatarPickerModal({
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-neutral-100">
           <div>
-            <h2 className="text-xl font-bold text-neutral-900">Choose Profile Picture</h2>
+            <h2 className="text-xl font-bold text-neutral-900">
+              Choose Profile Picture
+            </h2>
             <p className="text-xs text-neutral-500 mt-0.5">
               Select one of 16 avatars or upload your own picture
             </p>
@@ -156,7 +160,9 @@ export default function AvatarPickerModal({
               )}
             </div>
             <div>
-              <p className="text-sm font-semibold text-neutral-900">Avatar Preview</p>
+              <p className="text-sm font-semibold text-neutral-900">
+                Avatar Preview
+              </p>
               <p className="text-xs text-neutral-500 mt-0.5">
                 This image will be stored as base64 in your profile
               </p>
@@ -178,8 +184,8 @@ export default function AvatarPickerModal({
                     onClick={() => setSelectedBase64(item.base64)}
                     className={`relative group aspect-square rounded-xl p-2 border-2 transition-all flex items-center justify-center bg-neutral-50 hover:bg-neutral-100 ${
                       isSelected
-                        ? 'border-neutral-900 bg-neutral-100/80 shadow-md ring-2 ring-neutral-900/10 scale-[1.03]'
-                        : 'border-neutral-200 hover:border-neutral-400'
+                        ? "border-neutral-900 bg-neutral-100/80 shadow-md ring-2 ring-neutral-900/10 scale-[1.03]"
+                        : "border-neutral-200 hover:border-neutral-400"
                     }`}
                   >
                     <img
@@ -189,7 +195,11 @@ export default function AvatarPickerModal({
                     />
                     {isSelected && (
                       <div className="absolute top-1 right-1 bg-neutral-900 text-white rounded-full p-0.5 shadow-sm">
-                        <TickCircle size={14} variant="Bold" color="currentColor" />
+                        <TickCircle
+                          size={14}
+                          variant="Bold"
+                          color="currentColor"
+                        />
                       </div>
                     )}
                   </button>
@@ -204,10 +214,16 @@ export default function AvatarPickerModal({
               Or Upload Local Picture
             </label>
             <label className="flex items-center justify-center gap-3 p-4 border-2 border-dashed border-neutral-300 hover:border-neutral-900 rounded-xl cursor-pointer transition-colors bg-neutral-50/50 hover:bg-neutral-50">
-              <GalleryExport size={22} variant="Linear" className="text-neutral-600" />
+              <GalleryExport
+                size={22}
+                variant="Linear"
+                className="text-neutral-600"
+              />
               <div className="text-left">
                 <span className="text-sm font-medium text-neutral-900 block">
-                  {isUploading ? 'Converting image...' : 'Choose a file from your device'}
+                  {isUploading
+                    ? "Converting image..."
+                    : "Choose a file from your device"}
                 </span>
                 <span className="text-xs text-neutral-500 block">
                   PNG, JPG, GIF or WEBP (Max 5MB)
@@ -222,7 +238,9 @@ export default function AvatarPickerModal({
               />
             </label>
             {customFileError && (
-              <p className="text-xs text-red-600 font-medium mt-2">{customFileError}</p>
+              <p className="text-xs text-red-600 font-medium mt-2">
+                {customFileError}
+              </p>
             )}
           </div>
         </div>
@@ -242,7 +260,7 @@ export default function AvatarPickerModal({
             disabled={isSaving || isUploading}
             className="px-6 py-2 text-sm font-medium bg-neutral-900 text-white rounded-full hover:bg-neutral-800 transition-colors disabled:opacity-50 shadow-sm"
           >
-            {isSaving ? 'Saving...' : 'Save Avatar'}
+            {isSaving ? "Saving..." : "Save Avatar"}
           </button>
         </div>
       </div>

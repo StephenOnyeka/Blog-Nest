@@ -17,7 +17,10 @@ export function fallbackAvatar(seed: string | null | undefined): string {
 }
 
 /** Normalize an API author mini-profile to the mock Author shape */
-export function normalizeAuthor(a: ApiAuthor | null | undefined, fallbackId = "author") {
+export function normalizeAuthor(
+  a: ApiAuthor | null | undefined,
+  fallbackId = "author",
+) {
   return {
     id: a?.id || fallbackId,
     name: a?.name || "Author",

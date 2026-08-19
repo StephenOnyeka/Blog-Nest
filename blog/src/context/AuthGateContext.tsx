@@ -1,6 +1,6 @@
-import { useState, createContext, useContext } from 'react';
-import type { ReactNode } from 'react';
-import {AuthModal} from '../components/Navbar';
+import { useState, createContext, useContext } from "react";
+import type { ReactNode } from "react";
+import { AuthModal } from "../components/Navbar";
 
 /* ─── Auth Gate Context ──────────────────────────────────────────────────── */
 interface AuthGateContextType {
@@ -16,9 +16,12 @@ export const useAuthGate = () => useContext(AuthGateContext);
 /* ─── Provider: wraps the whole app ─────────────────────────────────────── */
 export function AuthGateProvider({ children }: { children: ReactNode }) {
   const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
-  const openAuthModal = () => { setAuthMode('signin'); setAuthOpen(true); };
+  const openAuthModal = () => {
+    setAuthMode("signin");
+    setAuthOpen(true);
+  };
 
   return (
     <AuthGateContext.Provider value={{ openAuthModal }}>
@@ -27,7 +30,9 @@ export function AuthGateProvider({ children }: { children: ReactNode }) {
         isOpen={authOpen}
         onClose={() => setAuthOpen(false)}
         mode={authMode}
-        onToggleMode={() => setAuthMode(m => m === 'signin' ? 'signup' : 'signin')}
+        onToggleMode={() =>
+          setAuthMode((m) => (m === "signin" ? "signup" : "signin"))
+        }
         onSuccess={() => setAuthOpen(false)}
       />
     </AuthGateContext.Provider>

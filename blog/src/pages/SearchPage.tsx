@@ -146,7 +146,7 @@ export default function SearchPage() {
                 {AUTHORS.slice(0, 4).map((author) => (
                   <Link
                     key={author.id}
-                                        to={`/profile/${author.username}`}
+                    to={`/profile/${author.username}`}
                     className="flex items-center gap-4 py-3 border-b border-neutral-100 no-underline group"
                   >
                     <div className="w-12 h-12 rounded-full overflow-hidden bg-neutral-100 shrink-0">
@@ -181,7 +181,11 @@ export default function SearchPage() {
                 </h2>
                 <div className="flex flex-col max-w-[740px]">
                   {matchedArticles.map((a) => (
-                    <ArticleCard key={a.id} article={a} isApi={liveArticleIds.has(a.id)} />
+                    <ArticleCard
+                      key={a.id}
+                      article={a}
+                      isApi={liveArticleIds.has(a.id)}
+                    />
                   ))}
                 </div>
               </div>
@@ -196,7 +200,7 @@ export default function SearchPage() {
                 {matchedAuthors.map((author) => (
                   <Link
                     key={author.id}
-                                        to={`/profile/${author.username}`}
+                    to={`/profile/${author.username}`}
                     className="flex items-center gap-4 py-4 border-b border-neutral-100 no-underline group"
                   >
                     <div className="w-[52px] h-[52px] rounded-full overflow-hidden bg-neutral-100 shrink-0">

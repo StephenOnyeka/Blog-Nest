@@ -1,17 +1,26 @@
-import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import parse from 'html-react-parser';
-import DOMPurify from 'dompurify';
+import { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import parse from "html-react-parser";
+import DOMPurify from "dompurify";
 import {
-  Heart, HeartAdd, Message, Save2, Share, More, ArrowLeft, Link1, Trash, Send2,
-} from 'iconsax-react';
-import PageTemplate from '../components/PageTemplate';
-import ArticleCard from '../components/ArticleCard';
-import { ARTICLES, formatClaps } from '../data/mockData';
+  Heart,
+  HeartAdd,
+  Message,
+  Save2,
+  Share,
+  More,
+  ArrowLeft,
+  Link1,
+  Trash,
+  Send2,
+} from "iconsax-react";
+import PageTemplate from "../components/PageTemplate";
+import ArticleCard from "../components/ArticleCard";
+import { ARTICLES, formatClaps } from "../data/mockData";
 // ARTICLES is only used as a fallback when the API server is unreachable
-import { getUserArticles } from '../data/articleStore';
-import { getArticleById, type ApiArticle } from '../data/api';
-import { normalizeApiArticle } from '../data/normalize';
+import { getUserArticles } from "../data/articleStore";
+import { getArticleById, type ApiArticle } from "../data/api";
+import { normalizeApiArticle } from "../data/normalize";
 import {
   useArticleComments,
   useAddComment,
@@ -20,12 +29,13 @@ import {
   useToggleBookmark,
   useClapArticle,
   useRelatedArticles,
-} from '../hooks/queries';
-import { useAuth } from '../context/AuthContext';
-import { useAuthGate } from '../context/AuthGateContext';
-import { toast } from 'sonner';
+} from "../hooks/queries";
+import { useAuth } from "../context/AuthContext";
+import { useAuthGate } from "../context/AuthGateContext";
+import { toast } from "sonner";
 
-const toolbarBtn = 'flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-900 cursor-pointer';
+const toolbarBtn =
+  "flex items-center gap-1.5 text-sm text-neutral-500 transition-colors hover:text-neutral-900 cursor-pointer";
 
 export default function ArticlePage() {
   const { id } = useParams<{ id: string }>();
@@ -40,28 +50,36 @@ export default function ArticlePage() {
   const [clapped, setClapped] = useState(false);
   const [following, setFollowing] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-  const [toastMsg, setToastMsg] = useState('');
+  const [toastMsg, setToastMsg] = useState("");
 
   // Comments
-  const [commentText, setCommentText] = useState('');
+  const [commentText, setCommentText] = useState("");
   const [replyToId, setReplyToId] = useState<string | null>(null);
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText] = useState("");
   const { data: comments, isLoading: commentsLoading } = useArticleComments(
     isApiArticle && article ? article.id : undefined,
   );
-  const addCommentMut = useAddComment(isApiArticle && article ? article.id : undefined);
-  const deleteCommentMut = useDeleteComment(isApiArticle && article ? article.id : undefined);
+  const addCommentMut = useAddComment(
+    isApiArticle && article ? article.id : undefined,
+  );
+  const deleteCommentMut = useDeleteComment(
+    isApiArticle && article ? article.id : undefined,
+  );
 
   // Bookmark (auth)
   const { data: bookmarkStatus } = useBookmarkStatus(
     isApiArticle && article ? article.id : undefined,
     isLoggedIn,
   );
-  const toggleBookmark = useToggleBookmark(isApiArticle && article ? article.id : undefined);
+  const toggleBookmark = useToggleBookmark(
+    isApiArticle && article ? article.id : undefined,
+  );
   const saved = isApiArticle ? !!bookmarkStatus?.bookmarked : false;
 
   // Clap (API-backed for real articles)
-  const clapMut = useClapArticle(isApiArticle && article ? article.id : undefined);
+  const clapMut = useClapArticle(
+    isApiArticle && article ? article.id : undefined,
+  );
 
   // Related articles from the API
   const { data: apiRelated } = useRelatedArticles(
@@ -88,7 +106,9 @@ export default function ArticlePage() {
         // server IS running but this article doesn't exist in the DB.
         const serverDown = !err?.response;
         if (serverDown) {
-          const local = ARTICLES.find(a => a.id === id) ?? getUserArticles().find(a => a.id === id);
+          const local =
+            ARTICLES.find((a) => a.id === id) ??
+            getUserArticles().find((a) => a.id === id);
           setArticle(local ?? null);
           setIsApiArticle(false);
           if (local) setClaps(local.claps);
@@ -109,17 +129,19 @@ export default function ArticlePage() {
 
   useEffect(() => {
     const handleScroll = () => {
-      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
+      const totalHeight =
+        document.documentElement.scrollHeight - window.innerHeight;
+      const progress =
+        totalHeight > 0 ? (window.scrollY / totalHeight) * 100 : 0;
       setScrollProgress(progress);
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 2500);
+    setTimeout(() => setToastMsg(""), 2500);
   };
 
   const commentCount = isApiArticle
@@ -127,31 +149,37 @@ export default function ArticlePage() {
     : (article?.comments ?? 0);
 
   const handleAddComment = async () => {
-    if (!isLoggedIn) { openAuthModal(); return; }
+    if (!isLoggedIn) {
+      openAuthModal();
+      return;
+    }
     if (!isApiArticle) {
-      showToast('This local draft cannot receive comments');
+      showToast("This local draft cannot receive comments");
       return;
     }
     const text = commentText.trim();
     if (!text) return;
     try {
       await addCommentMut.mutateAsync({ body: text });
-      setCommentText('');
-      toast.success('Comment posted');
+      setCommentText("");
+      toast.success("Comment posted");
     } catch {
       // error toast handled by api interceptor
     }
   };
 
   const handleReply = async (parentId: string) => {
-    if (!isLoggedIn) { openAuthModal(); return; }
+    if (!isLoggedIn) {
+      openAuthModal();
+      return;
+    }
     const text = replyText.trim();
     if (!text) return;
     try {
       await addCommentMut.mutateAsync({ body: text, parentId });
-      setReplyText('');
+      setReplyText("");
       setReplyToId(null);
-      toast.success('Reply posted');
+      toast.success("Reply posted");
     } catch {
       // error toast handled by api interceptor
     }
@@ -162,21 +190,21 @@ export default function ArticlePage() {
     if (!isApiArticle || !isLoggedIn) {
       const next = !clapped;
       setClapped(next);
-      setClaps(c => next ? c + 1 : c - 1);
+      setClaps((c) => (next ? c + 1 : c - 1));
       return;
     }
     // API-backed: flip instantly (optimistic), then reconcile with the server
     const target = !clapped;
     setClapped(target);
-    setClaps(c => target ? c + 1 : c - 1);
+    setClaps((c) => (target ? c + 1 : c - 1));
     clapMut.mutate(undefined, {
       onSuccess: (res) => {
         setClaps(res.claps);
-        if (typeof res.is_liked === 'boolean') setClapped(res.is_liked);
+        if (typeof res.is_liked === "boolean") setClapped(res.is_liked);
       },
       onError: () => {
         setClapped(clapped);
-        setClaps(c => target ? c - 1 : c + 1);
+        setClaps((c) => (target ? c - 1 : c + 1));
       },
     });
   };
@@ -184,21 +212,26 @@ export default function ArticlePage() {
   const handleDeleteComment = async (commentId: string) => {
     try {
       await deleteCommentMut.mutateAsync(commentId);
-      toast.success('Comment deleted');
+      toast.success("Comment deleted");
     } catch {
       // error toast handled by api interceptor
     }
   };
 
   const handleSaveToggle = () => {
-    if (!isLoggedIn) { openAuthModal(); return; }
+    if (!isLoggedIn) {
+      openAuthModal();
+      return;
+    }
     if (!isApiArticle) {
-      showToast('This draft can only be saved locally');
+      showToast("This draft can only be saved locally");
       return;
     }
     toggleBookmark.mutate(!!bookmarkStatus?.bookmarked, {
       onSuccess: (res) => {
-        showToast(res.bookmarked ? 'Saved to reading list' : 'Removed from list');
+        showToast(
+          res.bookmarked ? "Saved to reading list" : "Removed from list",
+        );
       },
     });
   };
@@ -219,7 +252,7 @@ export default function ArticlePage() {
         <div className="text-center py-20 px-6">
           <h1 className="text-3xl font-bold mb-4">Article not found</h1>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="text-green-700 text-base hover:underline"
           >
             ← Back to home
@@ -235,9 +268,9 @@ export default function ArticlePage() {
     let rawHtml = html;
     if (!isQuillHtml) {
       rawHtml = html
-        .replace(/\n\n/g, '</p><p>')
-        .replace(/^/, '<p>')
-        .replace(/$/, '</p>');
+        .replace(/\n\n/g, "</p><p>")
+        .replace(/^/, "<p>")
+        .replace(/$/, "</p>");
     }
     const cleanHtml = DOMPurify.sanitize(rawHtml);
     return parse(cleanHtml);
@@ -264,7 +297,7 @@ export default function ArticlePage() {
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-neutral-500 text-sm mb-4 py-4 hover:text-neutral-900 transition-colors"
         >
-          <ArrowLeft size={16} variant='Linear' color='currentColor'/>
+          <ArrowLeft size={16} variant="Linear" color="currentColor" />
           Back
         </button>
 
@@ -273,7 +306,12 @@ export default function ArticlePage() {
           {/* Tags */}
           <div className="flex flex-wrap gap-2 mb-5">
             {article.tags.map((tag: string) => (
-              <span key={tag} className="bg-neutral-100 text-neutral-600 text-xs font-medium px-3 py-1 rounded-full">{tag}</span>
+              <span
+                key={tag}
+                className="bg-neutral-100 text-neutral-600 text-xs font-medium px-3 py-1 rounded-full"
+              >
+                {tag}
+              </span>
             ))}
             {article.isMemberOnly && (
               <span className="bg-[#ffc017] text-neutral-900 text-[11px] font-bold px-2.5 py-1 rounded-[3px] tracking-[0.5px] uppercase">
@@ -283,14 +321,25 @@ export default function ArticlePage() {
           </div>
 
           {/* Title */}
-          <h1 className="font-serif text-[30px] sm:text-[38px] md:text-[46px] font-bold text-neutral-900 leading-tight mb-4">{article.title}</h1>
-          <p className="text-lg sm:text-xl text-neutral-500 leading-relaxed mb-8">{article.subtitle}</p>
+          <h1 className="font-serif text-[30px] sm:text-[38px] md:text-[46px] font-bold text-neutral-900 leading-tight mb-4">
+            {article.title}
+          </h1>
+          <p className="text-lg sm:text-xl text-neutral-500 leading-relaxed mb-8">
+            {article.subtitle}
+          </p>
 
           {/* Author bar */}
           <div className="flex items-center justify-between flex-wrap gap-4 py-4 border-t border-b border-neutral-100">
             <div className="flex items-center gap-3">
-              <Link to={`/profile/${article.author.username}`} className="w-10 h-10 rounded-full overflow-hidden bg-neutral-100 shrink-0 block">
-                <img src={article.author.avatar} alt={article.author.name} className="w-full h-full object-cover" />
+              <Link
+                to={`/profile/${article.author.username}`}
+                className="w-10 h-10 rounded-full overflow-hidden bg-neutral-100 shrink-0 block"
+              >
+                <img
+                  src={article.author.avatar}
+                  alt={article.author.name}
+                  className="w-full h-full object-cover"
+                />
               </Link>
               <div>
                 <div className="flex items-center gap-2">
@@ -303,11 +352,14 @@ export default function ArticlePage() {
                   <button
                     className="text-sm text-green-700 hover:text-green-900 transition-colors"
                     onClick={() => {
-                      if (!isLoggedIn) { openAuthModal(); return; }
-                      setFollowing(v => !v);
+                      if (!isLoggedIn) {
+                        openAuthModal();
+                        return;
+                      }
+                      setFollowing((v) => !v);
                     }}
                   >
-                    {following ? '· Following' : '· Follow'}
+                    {following ? "· Following" : "· Follow"}
                   </button>
                 </div>
                 <div className="flex items-center gap-2 text-[13px] text-neutral-400 mt-0.5">
@@ -321,36 +373,44 @@ export default function ArticlePage() {
             {/* Toolbar */}
             <div className="flex items-center gap-4">
               <button
-                className={`${toolbarBtn} ${clapped ? 'text-red-600' : ''}`}
+                className={`${toolbarBtn} ${clapped ? "text-red-600" : ""}`}
                 onClick={handleClap}
                 aria-label="Clap"
               >
-                {clapped
-                  ? <Heart size={20} variant="Bold" color="currentColor" />
-                  : <HeartAdd size={20} variant="Linear" color="currentColor" />
-                }
+                {clapped ? (
+                  <Heart size={20} variant="Bold" color="currentColor" />
+                ) : (
+                  <HeartAdd size={20} variant="Linear" color="currentColor" />
+                )}
                 <span>{formatClaps(claps)}</span>
               </button>
               <a href="#responses" className={toolbarBtn} aria-label="Comments">
-                <Message size={20}  variant="Linear" color="currentColor" />
+                <Message size={20} variant="Linear" color="currentColor" />
                 <span>{commentCount}</span>
               </a>
               <button
-                className={`${toolbarBtn} ${saved ? 'text-green-700' : ''}`}
+                className={`${toolbarBtn} ${saved ? "text-green-700" : ""}`}
                 onClick={handleSaveToggle}
                 aria-label="Save"
               >
-                <Save2 size={20} variant={saved ? 'Bold' : 'Linear'} color="currentColor" />
+                <Save2
+                  size={20}
+                  variant={saved ? "Bold" : "Linear"}
+                  color="currentColor"
+                />
               </button>
               <button
                 className={toolbarBtn}
-                onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Link copied!'); }}
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  showToast("Link copied!");
+                }}
                 aria-label="Share"
               >
-                <Share size={20}  variant="Linear" color="currentColor" />
+                <Share size={20} variant="Linear" color="currentColor" />
               </button>
               <button className={toolbarBtn} aria-label="More">
-                <More size={20}  variant="Linear" color="currentColor" />
+                <More size={20} variant="Linear" color="currentColor" />
               </button>
             </div>
           </div>
@@ -373,49 +433,66 @@ export default function ArticlePage() {
         {/* Clap zone */}
         <div className="flex items-center flex-wrap gap-4 py-8 border-t border-b border-neutral-100 my-10">
           <button
-            className={`flex items-center gap-2 text-base font-medium transition-colors ${clapped ? 'text-red-600' : 'text-neutral-500 hover:text-neutral-900'}`}
+            className={`flex items-center gap-2 text-base font-medium transition-colors ${clapped ? "text-red-600" : "text-neutral-500 hover:text-neutral-900"}`}
             onClick={handleClap}
           >
-            {clapped
-              ? <Heart size={28} variant="Bold" color="currentColor" />
-              : <HeartAdd size={28}  variant="Linear" color="currentColor" />
-            }
+            {clapped ? (
+              <Heart size={28} variant="Bold" color="currentColor" />
+            ) : (
+              <HeartAdd size={28} variant="Linear" color="currentColor" />
+            )}
             <span className="text-base font-medium">{formatClaps(claps)}</span>
           </button>
-          <a href="#responses" className="flex items-center gap-2 text-neutral-500 text-sm hover:text-neutral-900 transition-colors" aria-label="Comments">
-            <Message size={24}  variant="Linear" color="currentColor" />
+          <a
+            href="#responses"
+            className="flex items-center gap-2 text-neutral-500 text-sm hover:text-neutral-900 transition-colors"
+            aria-label="Comments"
+          >
+            <Message size={24} variant="Linear" color="currentColor" />
             <span>{commentCount} responses</span>
           </a>
 
           <div className="ml-auto flex gap-4">
             <button
               className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-900 transition-colors"
-              onClick={() => { navigator.clipboard.writeText(window.location.href); showToast('Link copied!'); }}
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.href);
+                showToast("Link copied!");
+              }}
               aria-label="Copy link"
             >
-              <Link1 size={20}  variant="Linear" color="currentColor" />
+              <Link1 size={20} variant="Linear" color="currentColor" />
             </button>
             <button
-              className={`flex items-center gap-1.5 transition-colors ${saved ? 'text-green-700' : 'text-neutral-400 hover:text-neutral-900'}`}
+              className={`flex items-center gap-1.5 transition-colors ${saved ? "text-green-700" : "text-neutral-400 hover:text-neutral-900"}`}
               onClick={handleSaveToggle}
               aria-label="Save"
             >
-              <Save2 size={20} variant={saved ? 'Bold' : 'Linear'} color="currentColor" />
+              <Save2
+                size={20}
+                variant={saved ? "Bold" : "Linear"}
+                color="currentColor"
+              />
             </button>
           </div>
         </div>
 
         {/* Responses / Comments */}
         <div id="responses" className="mt-2 scroll-mt-24">
-          <h2 className="text-2xl font-bold text-neutral-900 mb-6">Responses ({commentCount})</h2>
+          <h2 className="text-2xl font-bold text-neutral-900 mb-6">
+            Responses ({commentCount})
+          </h2>
 
           {/* Comment composer */}
           {isLoggedIn ? (
             <div className="flex items-start gap-3 mb-8">
               <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-100 shrink-0">
                 <img
-                  src={user?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.username || 'me'}`}
-                  alt={user?.name || 'You'}
+                  src={
+                    user?.avatar ||
+                    `https://api.dicebear.com/9.x/avataaars/svg?seed=${user?.username || "me"}`
+                  }
+                  alt={user?.name || "You"}
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -434,7 +511,7 @@ export default function ArticlePage() {
                     className="flex items-center gap-1.5 bg-neutral-900 text-white rounded-full px-5 py-2 text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-40"
                   >
                     <Send2 size={16} variant="Linear" color="currentColor" />
-                    {addCommentMut.isPending ? 'Posting…' : 'Respond'}
+                    {addCommentMut.isPending ? "Posting…" : "Respond"}
                   </button>
                 </div>
               </div>
@@ -451,7 +528,9 @@ export default function ArticlePage() {
           {/* Comment list — threaded (top-level + replies) */}
           <div className="space-y-6">
             {commentsLoading && (
-              <div className="text-sm text-neutral-400 py-4">Loading responses…</div>
+              <div className="text-sm text-neutral-400 py-4">
+                Loading responses…
+              </div>
             )}
             {!commentsLoading && comments && comments.length === 0 && (
               <div className="text-sm text-neutral-400 py-4">
@@ -461,7 +540,9 @@ export default function ArticlePage() {
             {comments
               ?.filter((c) => !c.parent_id)
               .map((comment) => {
-                const replies = comments.filter((c) => c.parent_id === comment.id);
+                const replies = comments.filter(
+                  (c) => c.parent_id === comment.id,
+                );
                 return (
                   <CommentThread
                     key={comment.id}
@@ -488,30 +569,41 @@ export default function ArticlePage() {
         <div className="bg-neutral-50 border border-neutral-100 rounded-lg p-4 sm:p-8 my-10 flex gap-4 sm:gap-5 items-start">
           <Link to={`/profile/${article.author.username}`} className="block">
             <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 bg-neutral-100">
-              <img src={article.author.avatar} alt={article.author.name} className="w-full h-full object-cover" />
+              <img
+                src={article.author.avatar}
+                alt={article.author.name}
+                className="w-full h-full object-cover"
+              />
             </div>
           </Link>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
               <Link to={`/profile/${article.author.username}`}>
-                <span className="text-lg font-bold text-neutral-900 hover:underline">{article.author.name}</span>
+                <span className="text-lg font-bold text-neutral-900 hover:underline">
+                  {article.author.name}
+                </span>
               </Link>
               <button
                 className={`text-sm font-medium rounded-full px-4 py-1.5 border transition-colors ${
                   following
-                    ? 'bg-neutral-900 text-white border-neutral-900 hover:opacity-80'
-                    : 'border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white'
+                    ? "bg-neutral-900 text-white border-neutral-900 hover:opacity-80"
+                    : "border-neutral-900 text-neutral-900 hover:bg-neutral-900 hover:text-white"
                 }`}
                 onClick={() => {
-                  if (!isLoggedIn) { openAuthModal(); return; }
-                  setFollowing(v => !v);
+                  if (!isLoggedIn) {
+                    openAuthModal();
+                    return;
+                  }
+                  setFollowing((v) => !v);
                 }}
               >
-                {following ? 'Following' : 'Follow'}
+                {following ? "Following" : "Follow"}
               </button>
             </div>
             {article.author.bio && (
-              <p className="text-sm text-neutral-500 mb-2">{article.author.bio}</p>
+              <p className="text-sm text-neutral-500 mb-2">
+                {article.author.bio}
+              </p>
             )}
             {article.author.followers > 0 && (
               <span className="text-[13px] text-neutral-400">
@@ -524,7 +616,9 @@ export default function ArticlePage() {
         {/* More from author */}
         {showMoreFromAuthor && (
           <div className="mt-12 pt-8 border-t border-neutral-100">
-            <h2 className="text-xl font-bold text-neutral-900 mb-6">More from {article.author.name}</h2>
+            <h2 className="text-xl font-bold text-neutral-900 mb-6">
+              More from {article.author.name}
+            </h2>
             <div className="flex flex-col">
               {moreFromAuthor.map((a) => (
                 <ArticleCard key={a.id} article={normalizeApiArticle(a)} />
@@ -536,7 +630,9 @@ export default function ArticlePage() {
         {/* Related reading */}
         {showRelatedByTags && (
           <div className="mt-12 pt-8 border-t border-neutral-100">
-            <h2 className="text-xl font-bold text-neutral-900 mb-6">Recommended Reading</h2>
+            <h2 className="text-xl font-bold text-neutral-900 mb-6">
+              Recommended Reading
+            </h2>
             <div className="flex flex-col">
               {relatedByTags.map((a) => (
                 <ArticleCard key={a.id} article={normalizeApiArticle(a)} />
@@ -598,7 +694,7 @@ function CommentThread({
         comment={comment}
         isOwn={isOwn}
         showReplyButton
-        onReply={() => isLoggedIn ? onToggleReply(comment.id) : onOpenAuth()}
+        onReply={() => (isLoggedIn ? onToggleReply(comment.id) : onOpenAuth())}
         onDelete={() => onDelete(comment.id)}
         deleting={deleting}
       />
@@ -610,7 +706,7 @@ function CommentThread({
             <textarea
               value={replyText}
               onChange={(e) => onReplyTextChange(e.target.value)}
-              placeholder={`Reply to ${comment.author?.name || 'user'}…`}
+              placeholder={`Reply to ${comment.author?.name || "user"}…`}
               rows={2}
               autoFocus
               className="w-full border border-neutral-200 rounded-xl px-4 py-3 text-sm text-neutral-900 outline-none focus:border-neutral-900 transition-colors resize-none"
@@ -628,7 +724,7 @@ function CommentThread({
                 className="flex items-center gap-1.5 bg-neutral-900 text-white rounded-full px-4 py-1.5 text-sm font-medium hover:bg-neutral-800 transition-colors disabled:opacity-40"
               >
                 <Send2 size={14} variant="Linear" color="currentColor" />
-                {replying ? 'Posting…' : 'Reply'}
+                {replying ? "Posting…" : "Reply"}
               </button>
             </div>
           </div>
@@ -677,8 +773,11 @@ function CommentItem({
     <div className="flex items-start gap-3">
       <div className="w-9 h-9 rounded-full overflow-hidden bg-neutral-100 shrink-0">
         <img
-          src={comment.author?.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${comment.author?.username || 'user'}`}
-          alt={comment.author?.name || 'User'}
+          src={
+            comment.author?.avatar ||
+            `https://api.dicebear.com/9.x/avataaars/svg?seed=${comment.author?.username || "user"}`
+          }
+          alt={comment.author?.name || "User"}
           className="w-full h-full object-cover"
         />
       </div>
@@ -686,16 +785,20 @@ function CommentItem({
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-sm">
             <Link
-              to={comment.author?.username ? `/profile/${comment.author.username}` : '#'}
+              to={
+                comment.author?.username
+                  ? `/profile/${comment.author.username}`
+                  : "#"
+              }
               className="font-semibold text-neutral-900 hover:underline truncate"
             >
-              {comment.author?.name || 'User'}
+              {comment.author?.name || "User"}
             </Link>
             <span className="text-xs text-neutral-400 shrink-0">
-              {new Date(comment.created_at).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
+              {new Date(comment.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
               })}
             </span>
           </div>

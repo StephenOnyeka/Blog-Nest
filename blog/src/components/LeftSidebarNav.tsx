@@ -38,7 +38,9 @@ export default function LeftSidebarNav() {
         id: u.id,
         username: u.username,
         name: u.name,
-        avatar: u.avatar || `https://api.dicebear.com/9.x/avataaars/svg?seed=${u.username}`,
+        avatar:
+          u.avatar ||
+          `https://api.dicebear.com/9.x/avataaars/svg?seed=${u.username}`,
       }))
     : WHO_TO_FOLLOW;
 
@@ -86,7 +88,9 @@ export default function LeftSidebarNav() {
         </div>
 
         {isLoading ? (
-          <div className="px-4 py-2 text-xs text-neutral-400">Loading following...</div>
+          <div className="px-4 py-2 text-xs text-neutral-400">
+            Loading following...
+          </div>
         ) : displayAuthors.length > 0 ? (
           displayAuthors.map((author) => (
             <Link
@@ -111,7 +115,9 @@ export default function LeftSidebarNav() {
             </Link>
           ))
         ) : (
-          <div className="px-4 py-1 text-xs text-neutral-400">Not following anyone yet</div>
+          <div className="px-4 py-1 text-xs text-neutral-400">
+            Not following anyone yet
+          </div>
         )}
 
         {/* Find writers CTA */}

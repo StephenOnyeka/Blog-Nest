@@ -1,8 +1,8 @@
-import type { ReactNode } from 'react';
-import Navbar from './Navbar';
-import Footer from './Footer';
-import LeftSidebarNav from './LeftSidebarNav';
-import MobileNav from './MobileNav';
+import type { ReactNode } from "react";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
+import LeftSidebarNav from "./LeftSidebarNav";
+import MobileNav from "./MobileNav";
 
 interface PageTemplateProps {
   children: ReactNode;
@@ -21,18 +21,14 @@ export default function PageTemplate({
       <Navbar />
 
       {hideSidebar ? (
-        <main className="flex-1">
-          {children}
-        </main>
+        <main className="flex-1">{children}</main>
       ) : (
         <main className="flex-1">
           <div className="flex max-w-7xl mx-auto px-4 sm:px-6 gap-0 pt-6 items-start">
             {/* Left sidebar nav */}
             <LeftSidebarNav />
             {/* Page content */}
-            <div className="flex-1 min-w-0">
-              {children}
-            </div>
+            <div className="flex-1 min-w-0">{children}</div>
           </div>
         </main>
       )}

@@ -51,10 +51,12 @@ export const queryKeys = {
   following: (userId: string) => ["following", userId] as const,
   articles: (params: GetArticlesParams = {}) => ["articles", params] as const,
   article: (id: string) => ["article", id] as const,
-  articleComments: (articleId: string) => ["article", articleId, "comments"] as const,
+  articleComments: (articleId: string) =>
+    ["article", articleId, "comments"] as const,
   bookmarkStatus: (articleId: string) => ["bookmark", articleId] as const,
   myBookmarks: ["bookmarks"] as const,
-  relatedArticles: (articleId: string) => ["article", articleId, "related"] as const,
+  relatedArticles: (articleId: string) =>
+    ["article", articleId, "related"] as const,
   notifications: ["notifications"] as const,
   unreadNotificationCount: ["notifications", "unread-count"] as const,
 };
@@ -146,7 +148,9 @@ export function useAddComment(articleId: string | undefined) {
       addComment(articleId as string, body, parentId),
     onSuccess: () => {
       if (articleId) {
-        qc.invalidateQueries({ queryKey: queryKeys.articleComments(articleId) });
+        qc.invalidateQueries({
+          queryKey: queryKeys.articleComments(articleId),
+        });
         qc.invalidateQueries({ queryKey: queryKeys.article(articleId) });
       }
     },
@@ -173,7 +177,9 @@ export function useClapArticle(articleId: string | undefined) {
       const prevFeeds = qc.getQueriesData<ArticleListResponse>({
         queryKey: ["articles"],
       });
-      const prevBookmarks = qc.getQueryData<ApiArticle[]>(queryKeys.myBookmarks);
+      const prevBookmarks = qc.getQueryData<ApiArticle[]>(
+        queryKeys.myBookmarks,
+      );
 
       const toggle = (a: ApiArticle): ApiArticle => ({
         ...a,
@@ -184,20 +190,20 @@ export function useClapArticle(articleId: string | undefined) {
       qc.setQueryData<ApiArticle>(queryKeys.article(articleId), (old) =>
         old ? toggle(old) : old,
       );
-      qc.setQueriesData<ArticleListResponse>({ queryKey: ["articles"] }, (old) =>
-        old
-          ? {
-              ...old,
-              articles: old.articles.map((a) =>
-                a.id === articleId ? toggle(a) : a,
-              ),
-            }
-          : old,
+      qc.setQueriesData<ArticleListResponse>(
+        { queryKey: ["articles"] },
+        (old) =>
+          old
+            ? {
+                ...old,
+                articles: old.articles.map((a) =>
+                  a.id === articleId ? toggle(a) : a,
+                ),
+              }
+            : old,
       );
       qc.setQueryData<ApiArticle[]>(queryKeys.myBookmarks, (old) =>
-        old
-          ? old.map((a) => (a.id === articleId ? toggle(a) : a))
-          : old,
+        old ? old.map((a) => (a.id === articleId ? toggle(a) : a)) : old,
       );
 
       return { prevArticle, prevFeeds, prevBookmarks };
@@ -223,15 +229,17 @@ export function useClapArticle(articleId: string | undefined) {
       qc.setQueryData<ApiArticle>(queryKeys.article(articleId), (old) =>
         old ? sync(old) : old,
       );
-      qc.setQueriesData<ArticleListResponse>({ queryKey: ["articles"] }, (old) =>
-        old
-          ? {
-              ...old,
-              articles: old.articles.map((a) =>
-                a.id === articleId ? sync(a) : a,
-              ),
-            }
-          : old,
+      qc.setQueriesData<ArticleListResponse>(
+        { queryKey: ["articles"] },
+        (old) =>
+          old
+            ? {
+                ...old,
+                articles: old.articles.map((a) =>
+                  a.id === articleId ? sync(a) : a,
+                ),
+              }
+            : old,
       );
       qc.setQueryData<ApiArticle[]>(queryKeys.myBookmarks, (old) =>
         old ? old.map((a) => (a.id === articleId ? sync(a) : a)) : old,
@@ -250,10 +258,13 @@ export function useClapArticle(articleId: string | undefined) {
 export function useDeleteComment(articleId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (commentId: string) => deleteComment(articleId as string, commentId),
+    mutationFn: (commentId: string) =>
+      deleteComment(articleId as string, commentId),
     onSuccess: () => {
       if (articleId) {
-        qc.invalidateQueries({ queryKey: queryKeys.articleComments(articleId) });
+        qc.invalidateQueries({
+          queryKey: queryKeys.articleComments(articleId),
+        });
         qc.invalidateQueries({ queryKey: queryKeys.article(articleId) });
       }
     },
@@ -261,7 +272,10 @@ export function useDeleteComment(articleId: string | undefined) {
 }
 
 /** Bookmark status for a single article (auth) */
-export function useBookmarkStatus(articleId: string | undefined, enabled: boolean) {
+export function useBookmarkStatus(
+  articleId: string | undefined,
+  enabled: boolean,
+) {
   return useQuery({
     queryKey: queryKeys.bookmarkStatus(articleId ?? ""),
     queryFn: () => getBookmarkStatus(articleId as string),
@@ -289,7 +303,9 @@ export function useToggleBookmark(articleId: string | undefined) {
       const prevStatus = qc.getQueryData<BookmarkStatus>(
         queryKeys.bookmarkStatus(articleId),
       );
-      const prevBookmarks = qc.getQueryData<ApiArticle[]>(queryKeys.myBookmarks);
+      const prevBookmarks = qc.getQueryData<ApiArticle[]>(
+        queryKeys.myBookmarks,
+      );
       const prevArticle = qc.getQueryData<ApiArticle>(
         queryKeys.article(articleId),
       );
@@ -308,15 +324,17 @@ export function useToggleBookmark(articleId: string | undefined) {
       qc.setQueryData<ApiArticle>(queryKeys.article(articleId), (old) =>
         old ? withBookmark(old) : old,
       );
-      qc.setQueriesData<ArticleListResponse>({ queryKey: ["articles"] }, (old) =>
-        old
-          ? {
-              ...old,
-              articles: old.articles.map((a) =>
-                a.id === articleId ? withBookmark(a) : a,
-              ),
-            }
-          : old,
+      qc.setQueriesData<ArticleListResponse>(
+        { queryKey: ["articles"] },
+        (old) =>
+          old
+            ? {
+                ...old,
+                articles: old.articles.map((a) =>
+                  a.id === articleId ? withBookmark(a) : a,
+                ),
+              }
+            : old,
       );
       // Optimistically add/remove from the bookmarks list (if the article is cached)
       qc.setQueryData<ApiArticle[]>(queryKeys.myBookmarks, (old) => {

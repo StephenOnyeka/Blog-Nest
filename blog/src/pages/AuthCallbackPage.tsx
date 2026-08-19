@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function AuthCallbackPage() {
   const [params] = useSearchParams();
@@ -12,12 +12,12 @@ export default function AuthCallbackPage() {
     if (handled.current) return;
     handled.current = true;
 
-    const token = params.get('token');
+    const token = params.get("token");
     if (token) {
       loginWithToken(token);
-      navigate('/', { replace: true });
+      navigate("/", { replace: true });
     } else {
-      navigate('/?error=auth_failed', { replace: true });
+      navigate("/?error=auth_failed", { replace: true });
     }
   }, [params, loginWithToken, navigate]);
 

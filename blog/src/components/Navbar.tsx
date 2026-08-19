@@ -28,116 +28,116 @@ export default function Navbar() {
   return (
     <>
       <nav className="sticky top-0 z-[100] bg-white border-b border-neutral-200 py-3">
-      <div className="flex items-center justify-between max-w-[1192px] mx-auto px-4 sm:px-6 gap-3 sm:gap-4">
-        {/* Logo */}
-        <Link
-          to="/"
-          className="font-serif text-[22px] sm:text-[26px] font-bold text-neutral-900 tracking-[-0.5px] shrink-0"
-        >
-          BlogNest
-        </Link>
+        <div className="flex items-center justify-between max-w-[1192px] mx-auto px-4 sm:px-6 gap-3 sm:gap-4">
+          {/* Logo */}
+          <Link
+            to="/"
+            className="font-serif text-[22px] sm:text-[26px] font-bold text-neutral-900 tracking-[-0.5px] shrink-0"
+          >
+            BlogNest
+          </Link>
 
-        {/* Search (hidden on mobile — accessible via bottom nav) */}
-        <div className="hidden sm:flex flex-1 max-w-[280px] items-center gap-2 bg-neutral-50 rounded-full px-4 py-2 text-neutral-500 text-sm transition-colors hover:bg-neutral-100">
-          <SearchNormal1 size={16} variant="Linear" color="currentColor" />
-          <input
-            className="border-none bg-transparent outline-none text-sm text-neutral-900 w-full font-sans placeholder-neutral-500"
-            type="text"
-            placeholder="Search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) =>
-              e.key === "Enter" && navigate(`/search?q=${search}`)
-            }
-          />
-        </div>
+          {/* Search (hidden on mobile — accessible via bottom nav) */}
+          <div className="hidden sm:flex flex-1 max-w-[280px] items-center gap-2 bg-neutral-50 rounded-full px-4 py-2 text-neutral-500 text-sm transition-colors hover:bg-neutral-100">
+            <SearchNormal1 size={16} variant="Linear" color="currentColor" />
+            <input
+              className="border-none bg-transparent outline-none text-sm text-neutral-900 w-full font-sans placeholder-neutral-500"
+              type="text"
+              placeholder="Search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && navigate(`/search?q=${search}`)
+              }
+            />
+          </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3 sm:gap-4">
-          {isLoggedIn ? (
-            <>
-              <Link
-                to="/write"
-                className="flex items-center gap-1.5 text-neutral-500 text-[15px] font-normal transition-colors py-2 hover:text-neutral-900"
-                aria-label="Write"
-              >
-                <Edit size={18} variant="Linear" color="currentColor" />
-                <span className="hidden sm:inline">Write</span>
-              </Link>
-              <button
-                className="w-9 h-9 rounded-full overflow-hidden cursor-pointer bg-neutral-100 flex items-center justify-center shrink-0 relative hover:bg-neutral-200 transition-colors"
-                aria-label="Notifications"
-                onClick={() => setIsNotifOpen(true)}
-              >
-                <Notification
-                  size={20}
-                  className="text-neutral-500"
-                  variant="Linear"
-                  color="currentColor"
-                />
-                {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
-                )}
-              </button>
-              {/* Profile avatar — toggles dropdown */}
-              <div className="relative">
-                <button
-                  onClick={() => setIsProfileMenuOpen((v) => !v)}
-                  className="w-9 h-9 rounded-full overflow-hidden cursor-pointer bg-neutral-100 flex items-center justify-center shrink-0 ring-2 ring-transparent hover:ring-neutral-300 transition-all"
-                  aria-label="Open profile menu"
-                  aria-expanded={isProfileMenuOpen}
+          {/* Actions */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {isLoggedIn ? (
+              <>
+                <Link
+                  to="/write"
+                  className="flex items-center gap-1.5 text-neutral-500 text-[15px] font-normal transition-colors py-2 hover:text-neutral-900"
+                  aria-label="Write"
                 >
-                  <img
-                    className="w-full h-full object-cover"
-                    src={
-                      user?.avatar ||
-                      "https://api.dicebear.com/9.x/avataaars/svg?seed=me&backgroundColor=ffd5dc"
-                    }
-                    alt="Your avatar"
+                  <Edit size={18} variant="Linear" color="currentColor" />
+                  <span className="hidden sm:inline">Write</span>
+                </Link>
+                <button
+                  className="w-9 h-9 rounded-full overflow-hidden cursor-pointer bg-neutral-100 flex items-center justify-center shrink-0 relative hover:bg-neutral-200 transition-colors"
+                  aria-label="Notifications"
+                  onClick={() => setIsNotifOpen(true)}
+                >
+                  <Notification
+                    size={20}
+                    className="text-neutral-500"
+                    variant="Linear"
+                    color="currentColor"
                   />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                  )}
                 </button>
-                <ProfileMenuDropdown
-                  isOpen={isProfileMenuOpen}
-                  onClose={() => setIsProfileMenuOpen(false)}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <button
-                className="flex items-center gap-1.5 text-neutral-500 text-[15px] font-normal transition-colors py-2 hover:text-neutral-900"
-                onClick={openAuthModal}
-                aria-label="Write"
-              >
-                <Edit size={18} variant="Linear" color="currentColor" />
-                <span className="hidden sm:inline">Write</span>
-              </button>
-              <button
-                className="hidden md:inline text-sm text-neutral-500 font-normal py-2 transition-colors hover:text-neutral-900"
-                onClick={openAuthModal}
-              >
-                Sign in
-              </button>
-              <button
-                className="bg-neutral-900 text-white rounded-full px-4 sm:px-5 py-2 text-sm font-medium transition-opacity hover:opacity-85"
-                onClick={openAuthModal}
-              >
-                Get started
-              </button>
-            </>
-          )}
+                {/* Profile avatar — toggles dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsProfileMenuOpen((v) => !v)}
+                    className="w-9 h-9 rounded-full overflow-hidden cursor-pointer bg-neutral-100 flex items-center justify-center shrink-0 ring-2 ring-transparent hover:ring-neutral-300 transition-all"
+                    aria-label="Open profile menu"
+                    aria-expanded={isProfileMenuOpen}
+                  >
+                    <img
+                      className="w-full h-full object-cover"
+                      src={
+                        user?.avatar ||
+                        "https://api.dicebear.com/9.x/avataaars/svg?seed=me&backgroundColor=ffd5dc"
+                      }
+                      alt="Your avatar"
+                    />
+                  </button>
+                  <ProfileMenuDropdown
+                    isOpen={isProfileMenuOpen}
+                    onClose={() => setIsProfileMenuOpen(false)}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  className="flex items-center gap-1.5 text-neutral-500 text-[15px] font-normal transition-colors py-2 hover:text-neutral-900"
+                  onClick={openAuthModal}
+                  aria-label="Write"
+                >
+                  <Edit size={18} variant="Linear" color="currentColor" />
+                  <span className="hidden sm:inline">Write</span>
+                </button>
+                <button
+                  className="hidden md:inline text-sm text-neutral-500 font-normal py-2 transition-colors hover:text-neutral-900"
+                  onClick={openAuthModal}
+                >
+                  Sign in
+                </button>
+                <button
+                  className="bg-neutral-900 text-white rounded-full px-4 sm:px-5 py-2 text-sm font-medium transition-opacity hover:opacity-85"
+                  onClick={openAuthModal}
+                >
+                  Get started
+                </button>
+              </>
+            )}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
 
-    {/* Notifications Modal */}
-    {isLoggedIn && (
-      <NotificationsModal
-        isOpen={isNotifOpen}
-        onClose={() => setIsNotifOpen(false)}
-      />
-    )}
-  </>
+      {/* Notifications Modal */}
+      {isLoggedIn && (
+        <NotificationsModal
+          isOpen={isNotifOpen}
+          onClose={() => setIsNotifOpen(false)}
+        />
+      )}
+    </>
   );
 }
 

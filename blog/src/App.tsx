@@ -1,14 +1,19 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'sonner';
-import { AuthProvider } from './context/AuthContext';
-import { AuthGateProvider } from './context/AuthGateContext';
-import ProtectedRoute from './components/ProtectedRoute';
-import HomePage from './pages/HomePage';
-import ArticlePage from './pages/ArticlePage';
-import ProfilePage from './pages/ProfilePage';
-import WritePage from './pages/WritePage';
-import SearchPage from './pages/SearchPage';
-import AuthCallbackPage from './pages/AuthCallbackPage';
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
+import { Toaster } from "sonner";
+import { AuthProvider } from "./context/AuthContext";
+import { AuthGateProvider } from "./context/AuthGateContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import HomePage from "./pages/HomePage";
+import ArticlePage from "./pages/ArticlePage";
+import ProfilePage from "./pages/ProfilePage";
+import WritePage from "./pages/WritePage";
+import SearchPage from "./pages/SearchPage";
+import AuthCallbackPage from "./pages/AuthCallbackPage";
 
 export default function App() {
   return (
