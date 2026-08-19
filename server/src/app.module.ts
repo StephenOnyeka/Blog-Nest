@@ -17,6 +17,7 @@ import { Comment } from './entities/comment.entity';
 import { Bookmark } from './entities/bookmark.entity';
 import { Notification } from './entities/notification.entity';
 import { Subscription } from './entities/subscription.entity';
+import { Clap } from './entities/clap.entity';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { Subscription } from './entities/subscription.entity';
           Article,
           Comment,
           Bookmark,
+          Clap,
           Notification,
           Subscription,
         ],

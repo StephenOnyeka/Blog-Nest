@@ -22,13 +22,16 @@ export default function HomePage() {
   const bookmarkedIds = new Set(bookmarks?.map((b) => b.id) ?? []);
 
   const serverAvailable = !isError && !!apiData;
+  const apiArticleIds = new Set((apiData?.articles ?? []).map((a) => a.id));
 
   const allArticles = serverAvailable
     ? [
-        ...getUserArticles(), // user drafts from localStorage still show
+        // Only non-draft local stories go on the feed — drafts live in the
+        // profile's Drafts tab instead.
+        ...getUserArticles().filter(a => !a.isDraft),
         ...(apiData?.articles ?? []).map(normalizeApiArticle),
       ]
-    : [...getUserArticles(), ...ARTICLES];
+    : [...getUserArticles().filter(a => !a.isDraft), ...ARTICLES];
 
   const filteredArticles = activeTopic === 'For You' || activeTopic === 'Following'
     ? allArticles
@@ -82,6 +85,8 @@ export default function HomePage() {
                 key={article.id}
                 article={article}
                 initialSaved={bookmarkedIds.has(article.id)}
+                initialLiked={article.isLiked}
+                isApi={apiArticleIds.has(article.id)}
               />
             ))
           )}

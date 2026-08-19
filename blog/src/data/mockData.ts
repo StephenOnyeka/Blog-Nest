@@ -21,6 +21,10 @@ export interface Article {
   claps: number;
   comments: number;
   isMemberOnly: boolean;
+  isLiked?: boolean;
+  isBookmarked?: boolean;
+  /** Local drafts only live in localStorage until they reach the backend */
+  isDraft?: boolean;
 }
 
 export const AUTHORS: Author[] = [

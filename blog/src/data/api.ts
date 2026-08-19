@@ -48,6 +48,8 @@ export interface ApiArticle {
   author: ApiAuthor;
   claps: number;
   comments: number;
+  is_liked: boolean;
+  is_bookmarked: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -190,6 +192,7 @@ export interface CreateArticlePayload {
   tags?: string[];
   is_member_only?: boolean;
   is_draft?: boolean;
+  read_time?: number;
 }
 
 export type UpdateArticlePayload = Partial<CreateArticlePayload>;
@@ -205,6 +208,12 @@ export const getArticles = async (
 /** Get a single article by id */
 export const getArticleById = async (id: string): Promise<ApiArticle> => {
   const res = await api.get<ApiArticle>(`/articles/${id}`);
+  return res.data;
+};
+
+/** List the logged-in user's drafts (auth required, private) */
+export const getMyDrafts = async (): Promise<ApiArticle[]> => {
+  const res = await api.get<ApiArticle[]>("/articles/mine/drafts");
   return res.data;
 };
 
@@ -257,8 +266,8 @@ export const addComment = async (
 /** Increment clap count for an article (public) */
 export const clapArticle = async (
   articleId: string,
-): Promise<{ success: boolean; claps: number }> => {
-  const res = await api.post<{ success: boolean; claps: number }>(
+): Promise<{ success: boolean; claps: number; is_liked?: boolean }> => {
+  const res = await api.post<{ success: boolean; claps: number; is_liked?: boolean }>(
     `/articles/${articleId}/clap`,
   );
   return res.data;

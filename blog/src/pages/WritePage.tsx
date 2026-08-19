@@ -22,7 +22,12 @@ import {
 } from "../data/articleStore";
 import type { Article } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
-import { createArticle } from "../data/api";
+import {
+  createArticle,
+  updateArticle,
+  getArticleById as fetchArticleById,
+} from "../data/api";
+import { normalizeApiArticle } from "../data/normalize";
 import { toast } from "sonner";
 
 /* ─── Quill toolbar modules ─────────────────────── */
@@ -119,8 +124,38 @@ export default function WritePage() {
   const [published, setPublished] = useState(false);
   const [publishedArticleId, setPublishedArticleId] = useState<string | null>(null);
 
+  // Id of the article already saved on the backend (a draft or a published
+  // story being edited). `null` means it only exists locally so far.
+  const [serverDraftId, setServerDraftId] = useState<string | null>(null);
+
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+
+  // When editing an article that lives on the server (e.g. a saved draft),
+  // load it into the editor instead of keeping a blank local draft.
+  useEffect(() => {
+    if (!editId || editId.startsWith("user-")) return;
+    let mounted = true;
+    fetchArticleById(editId)
+      .then((article) => {
+        if (!mounted) return;
+        const normalized = normalizeApiArticle(article);
+        setDraft(normalized);
+        setTitle(normalized.title);
+        setSubtitle(normalized.subtitle);
+        setBody(normalized.body);
+        setTags(normalized.tags);
+        setThumbnail(normalized.thumbnail);
+        setIsMemberOnly(normalized.isMemberOnly);
+        setServerDraftId(article.id);
+      })
+      .catch(() => {
+        /* fall back to the blank local draft */
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [editId]);
 
   // Auto-save to localStorage whenever content changes
   const autosave = useCallback(() => {
@@ -136,6 +171,7 @@ export default function WritePage() {
         thumbnail,
         isMemberOnly,
         readTime: estimateReadTime(body),
+        isDraft: true,
         publishedAt: new Date().toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
@@ -179,7 +215,7 @@ export default function WritePage() {
     // bears the author's actual avatar from their profile.
     if (isLoggedIn && user) {
       try {
-        const created = await createArticle({
+        const payload = {
           title,
           subtitle,
           body,
@@ -187,7 +223,13 @@ export default function WritePage() {
           thumbnail: thumbnail || undefined,
           is_member_only: isMemberOnly,
           is_draft: false,
-        });
+          read_time: estimateReadTime(body),
+        };
+        // If the story was previously saved as a backend draft, publish the
+        // same row (draft → published). Otherwise create it fresh.
+        const created = serverDraftId
+          ? await updateArticle(serverDraftId, payload)
+          : await createArticle(payload);
         // Remove the local draft so it doesn't duplicate the DB article
         deleteArticle(draft.id);
         setPublishedArticleId(created.id);
@@ -210,6 +252,7 @@ export default function WritePage() {
       isMemberOnly,
       author: activeAuthor,
       readTime: estimateReadTime(body),
+      isDraft: false,
       publishedAt: new Date().toLocaleDateString("en-US", {
         month: "short",
         day: "numeric",
@@ -218,6 +261,60 @@ export default function WritePage() {
     saveArticle(finalArticle);
     setPublishedArticleId(finalArticle.id);
     setPublished(true);
+  };
+
+  // Save as draft
+  const handleSaveDraft = async () => {
+    setShowPublishPanel(false);
+
+    // Logged-in users save drafts to the backend so they can be resumed later.
+    if (isLoggedIn && user) {
+      try {
+        const payload = {
+          title,
+          subtitle,
+          body,
+          tags,
+          thumbnail: thumbnail || undefined,
+          is_member_only: isMemberOnly,
+          is_draft: true,
+          read_time: estimateReadTime(body),
+        };
+        const saved = serverDraftId
+          ? await updateArticle(serverDraftId, payload)
+          : await createArticle(payload);
+        setServerDraftId(saved.id);
+        // The server is now the source of truth — drop the redundant local
+        // copy so it doesn't show up twice on the home feed.
+        deleteArticle(draft.id);
+        setSaveStatus("saved");
+        toast.success("Draft saved to your profile");
+      } catch (err: any) {
+        toast.error(err.response?.data?.message || "Failed to save draft. Please try again.");
+      }
+      return;
+    }
+
+    // Guests fall back to the local store
+    const updatedDraft: Article = {
+      ...draft,
+      title,
+      subtitle,
+      body,
+      tags,
+      thumbnail,
+      isMemberOnly,
+      readTime: estimateReadTime(body),
+      isDraft: true,
+      publishedAt: new Date().toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+    };
+    saveArticle(updatedDraft);
+    setDraft(updatedDraft);
+    setSaveStatus("saved");
+    toast.success("Draft saved locally");
   };
 
   const words = wordCount(body);
@@ -547,7 +644,7 @@ export default function WritePage() {
               </button>
               <button
                 className="text-sm text-neutral-500 bg-transparent border-none cursor-pointer font-sans transition-colors hover:text-neutral-900"
-                onClick={() => setShowPublishPanel(false)}
+                onClick={handleSaveDraft}
               >
                 Save as draft
               </button>

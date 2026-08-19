@@ -22,11 +22,28 @@ import {
 } from '@nestjs/swagger';
 import { ArticlesService } from './articles.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtService } from '@nestjs/jwt';
 
 @ApiTags('Articles')
 @Controller('articles')
 export class ArticlesController {
-  constructor(private readonly articlesService: ArticlesService) {}
+  constructor(
+    private readonly articlesService: ArticlesService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  /** Best-effort extraction of user public_id (UUID) from the optional Bearer token */
+  private extractUserPublicId(req: any): string | undefined {
+    try {
+      const auth = req.headers?.authorization ?? '';
+      const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+      if (!token) return undefined;
+      const payload = this.jwtService.verify(token);
+      return payload.sub ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
 
   @Get()
   @ApiOperation({
@@ -46,12 +63,14 @@ export class ArticlesController {
     @Query('author_id') authorId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Request() req?: any,
   ) {
     return this.articlesService.findAll(
       tag,
       authorId,
       page ? +page : 1,
       limit ? +limit : 10,
+      this.extractUserPublicId(req),
     );
   }
 
@@ -163,10 +182,22 @@ export class ArticlesController {
   @Get(':id/related')
   @ApiOperation({ summary: 'Get articles related by author or tags' })
   @ApiParam({ name: 'id', description: 'Article public UUID' })
-  @ApiResponse({ status: 200, description: 'Related articles split by author and tags' })
+  @ApiResponse({
+    status: 200,
+    description: 'Related articles split by author and tags',
+  })
   @ApiResponse({ status: 404, description: 'Article not found' })
-  async getRelated(@Param('id') id: string) {
-    return this.articlesService.getRelated(id);
+  async getRelated(@Param('id') id: string, @Request() req?: any) {
+    return this.articlesService.getRelated(id, this.extractUserPublicId(req));
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('mine/drafts')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: "List the logged-in user's drafts (private)" })
+  @ApiResponse({ status: 200, description: 'Array of draft articles' })
+  async getMyDrafts(@Request() req: any) {
+    return this.articlesService.getMyDrafts(req.user.userId);
   }
 
   @Get(':id')
@@ -174,8 +205,8 @@ export class ArticlesController {
   @ApiParam({ name: 'id', description: 'Article public UUID' })
   @ApiResponse({ status: 200, description: 'Article details' })
   @ApiResponse({ status: 404, description: 'Article not found' })
-  async findOne(@Param('id') id: string) {
-    return this.articlesService.findOne(id);
+  async findOne(@Param('id') id: string, @Request() req?: any) {
+    return this.articlesService.findOne(id, this.extractUserPublicId(req));
   }
 
   @UseGuards(JwtAuthGuard)
@@ -247,7 +278,7 @@ export class ArticlesController {
   @ApiOperation({ summary: 'Increment clap count for an article' })
   @ApiParam({ name: 'id', description: 'Article public UUID' })
   @ApiResponse({ status: 200, description: 'Clap registered' })
-  async clap(@Param('id') id: string) {
-    return this.articlesService.clap(id);
+  async clap(@Param('id') id: string, @Request() req?: any) {
+    return this.articlesService.clap(id, this.extractUserPublicId(req));
   }
 }

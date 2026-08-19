@@ -12,6 +12,7 @@ import {
 import { Profile } from './profile.entity';
 import { Comment } from './comment.entity';
 import { Bookmark } from './bookmark.entity';
+import { Clap } from './clap.entity';
 
 @Entity('articles')
 export class Article {
@@ -69,6 +70,9 @@ export class Article {
 
   @OneToMany(() => Bookmark, (bookmark) => bookmark.article)
   bookmarks: Bookmark[];
+
+  @OneToMany(() => Clap, (clap) => clap.article)
+  clapsRelation: Clap[];
 
   @CreateDateColumn()
   created_at: Date;

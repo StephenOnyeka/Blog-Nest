@@ -79,6 +79,7 @@ export default function ArticlePage() {
         if (!isMounted) return;
         setArticle(normalizeApiArticle(apiArticle));
         setClaps(apiArticle.claps);
+        setClapped(!!apiArticle.is_liked);
         setIsApiArticle(true);
       } catch (err: any) {
         if (!isMounted) return;
@@ -157,16 +158,26 @@ export default function ArticlePage() {
   };
 
   const handleClap = () => {
+    // Mock/local articles (or guests) keep the local toggle behaviour
     if (!isApiArticle || !isLoggedIn) {
-      // Guests or mock articles keep the local toggle behaviour
-      setClapped(v => !v);
-      setClaps(c => clapped ? c - 1 : c + 1);
+      const next = !clapped;
+      setClapped(next);
+      setClaps(c => next ? c + 1 : c - 1);
       return;
     }
-    // API-backed: increment on the server and use the authoritative count
-    setClapped(true);
+    // API-backed: flip instantly (optimistic), then reconcile with the server
+    const target = !clapped;
+    setClapped(target);
+    setClaps(c => target ? c + 1 : c - 1);
     clapMut.mutate(undefined, {
-      onSuccess: (res) => setClaps(res.claps),
+      onSuccess: (res) => {
+        setClaps(res.claps);
+        if (typeof res.is_liked === 'boolean') setClapped(res.is_liked);
+      },
+      onError: () => {
+        setClapped(clapped);
+        setClaps(c => target ? c - 1 : c + 1);
+      },
     });
   };
 

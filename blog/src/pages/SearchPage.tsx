@@ -61,6 +61,11 @@ export default function SearchPage() {
     return [...byId.values()];
   }, [liveArticles]);
 
+  const liveArticleIds = useMemo(
+    () => new Set(liveArticles.map((a) => a.id)),
+    [liveArticles],
+  );
+
   const articleFuse = useMemo(
     () =>
       new Fuse(allArticles, {
@@ -176,7 +181,7 @@ export default function SearchPage() {
                 </h2>
                 <div className="flex flex-col max-w-[740px]">
                   {matchedArticles.map((a) => (
-                    <ArticleCard key={a.id} article={a} />
+                    <ArticleCard key={a.id} article={a} isApi={liveArticleIds.has(a.id)} />
                   ))}
                 </div>
               </div>

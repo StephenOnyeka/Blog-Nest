@@ -49,5 +49,7 @@ export function normalizeApiArticle(a: ApiArticle) {
     claps: a.claps,
     comments: a.comments,
     isMemberOnly: a.is_member_only || false,
+    isLiked: a.is_liked,
+    isBookmarked: a.is_bookmarked,
   };
 }

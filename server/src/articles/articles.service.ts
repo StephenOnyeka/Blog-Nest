@@ -10,6 +10,7 @@ import { Profile } from '../entities/profile.entity';
 import { Follow } from '../entities/follow.entity';
 import { Comment } from '../entities/comment.entity';
 import { Bookmark } from '../entities/bookmark.entity';
+import { Clap } from '../entities/clap.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
 /** Strict UUID v4 regex */
@@ -35,6 +36,8 @@ export class ArticlesService {
     private readonly commentRepo: Repository<Comment>,
     @InjectRepository(Bookmark)
     private readonly bookmarkRepo: Repository<Bookmark>,
+    @InjectRepository(Clap)
+    private readonly clapRepo: Repository<Clap>,
     private readonly notificationsService: NotificationsService,
   ) {}
 
@@ -75,7 +78,10 @@ export class ArticlesService {
     );
   }
 
-  private mapToFrontendArticle(article: Article) {
+  private mapToFrontendArticle(
+    article: Article,
+    userState?: { is_liked: boolean; is_bookmarked: boolean },
+  ) {
     return {
       id: article.public_id,
       title: article.title,
@@ -100,10 +106,63 @@ export class ArticlesService {
         username: article.author?.username,
         avatar: article.author?.avatar ?? null,
       },
+      is_liked: userState?.is_liked ?? false,
+      is_bookmarked: userState?.is_bookmarked ?? false,
     };
   }
 
-  async findAll(tag?: string, authorPublicId?: string, page = 1, limit = 10) {
+  /** Resolve a public_id (UUID) to the internal numeric profile id */
+  private async resolveUserId(publicId?: string): Promise<number | undefined> {
+    if (!publicId) return undefined;
+    const profile = await this.profileRepo.findOne({
+      where: { public_id: publicId },
+      select: { id: true },
+    });
+    return profile?.id;
+  }
+
+  /** Fetch the current user's like/bookmark status for a list of articles */
+  private async getUserArticleStates(
+    articleIds: number[],
+    userPublicId?: string,
+  ): Promise<Map<number, { is_liked: boolean; is_bookmarked: boolean }>> {
+    const stateMap = new Map<
+      number,
+      { is_liked: boolean; is_bookmarked: boolean }
+    >();
+    const userId = await this.resolveUserId(userPublicId);
+    if (!userId || articleIds.length === 0) return stateMap;
+
+    const [bookmarks, claps] = await Promise.all([
+      this.bookmarkRepo.find({
+        where: articleIds.map((id) => ({ user_id: userId, article_id: id })),
+        select: { article_id: true },
+      }),
+      this.clapRepo.find({
+        where: articleIds.map((id) => ({ user_id: userId, article_id: id })),
+        select: { article_id: true },
+      }),
+    ]);
+
+    const bookmarkedIds = new Set(bookmarks.map((b) => b.article_id));
+    const clappedIds = new Set(claps.map((c) => c.article_id));
+
+    for (const id of articleIds) {
+      stateMap.set(id, {
+        is_liked: clappedIds.has(id),
+        is_bookmarked: bookmarkedIds.has(id),
+      });
+    }
+    return stateMap;
+  }
+
+  async findAll(
+    tag?: string,
+    authorPublicId?: string,
+    page = 1,
+    limit = 10,
+    userPublicId?: string,
+  ) {
     const query = this.articleRepo
       .createQueryBuilder('article')
       .leftJoinAndSelect('article.author', 'author')
@@ -122,15 +181,23 @@ export class ArticlesService {
     }
 
     const [articles, total] = await query.getManyAndCount();
+
+    const stateMap = await this.getUserArticleStates(
+      articles.map((a) => a.id),
+      userPublicId,
+    );
+
     return {
-      articles: articles.map((a) => this.mapToFrontendArticle(a)),
+      articles: articles.map((a) =>
+        this.mapToFrontendArticle(a, stateMap.get(a.id)),
+      ),
       total,
       page,
       limit,
     };
   }
 
-  async findOne(publicId: string) {
+  async findOne(publicId: string, userPublicId?: string) {
     assertUuid(publicId, 'Article');
     const article = await this.articleRepo.findOne({
       where: { public_id: publicId },
@@ -138,7 +205,28 @@ export class ArticlesService {
     });
 
     if (!article) throw new NotFoundException('Article not found');
-    return this.mapToFrontendArticle(article);
+    const stateMap = await this.getUserArticleStates(
+      [article.id],
+      userPublicId,
+    );
+    return this.mapToFrontendArticle(article, stateMap.get(article.id));
+  }
+
+  /** List only the logged-in user's own drafts (never public) */
+  async getMyDrafts(userPublicId: string) {
+    assertUuid(userPublicId, 'User');
+    const user = await this.profileRepo.findOne({
+      where: { public_id: userPublicId },
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const articles = await this.articleRepo.find({
+      where: { author_id: user.id, is_draft: true },
+      relations: { author: true },
+      order: { updated_at: 'DESC' },
+    });
+
+    return articles.map((a) => this.mapToFrontendArticle(a));
   }
 
   async create(authorPublicId: string, data: any) {
@@ -147,11 +235,15 @@ export class ArticlesService {
     });
     if (!author) throw new NotFoundException('Author not found');
 
-    const isDraft = data.isDraft ?? true;
+    // Frontend sends snake_case (is_draft / is_member_only); accept both for
+    // robustness, but never silently treat an explicit `false` as a draft.
+    const isDraft = data.is_draft ?? data.isDraft ?? true;
     const article = this.articleRepo.create({
       ...data,
       author_id: author.id,
       is_draft: isDraft,
+      is_member_only: data.is_member_only ?? data.isMemberOnly ?? false,
+      read_time: data.read_time ?? data.readTime ?? 5,
       published_at: isDraft ? null : new Date(),
     });
 
@@ -184,25 +276,29 @@ export class ArticlesService {
       throw new UnauthorizedException('You can only edit your own articles');
     }
 
+    // Frontend sends snake_case; accept camelCase as well for robustness.
+    const newIsDraft = data.is_draft ?? data.isDraft ?? article.is_draft;
+
     // Detect draft → published transition
-    const beingPublished = data.isDraft === false && article.is_draft === true;
+    const beingPublished = newIsDraft === false && article.is_draft === true;
 
     // Support draft toggle logic
     if (beingPublished) {
       article.published_at = new Date();
-    } else if (data.isDraft === true) {
+    } else if (newIsDraft === true) {
       article.published_at = null;
     }
 
     Object.assign(article, {
-      title: data.title,
-      subtitle: data.subtitle,
-      body: data.body,
-      thumbnail: data.thumbnail,
-      tags: data.tags,
-      read_time: data.readTime,
-      is_member_only: data.isMemberOnly,
-      is_draft: data.isDraft,
+      title: data.title ?? article.title,
+      subtitle: data.subtitle ?? article.subtitle,
+      body: data.body ?? article.body,
+      thumbnail: data.thumbnail ?? article.thumbnail,
+      tags: data.tags ?? article.tags,
+      read_time: data.read_time ?? data.readTime ?? article.read_time,
+      is_member_only:
+        data.is_member_only ?? data.isMemberOnly ?? article.is_member_only,
+      is_draft: newIsDraft,
     });
 
     await this.articleRepo.save(article);
@@ -237,7 +333,7 @@ export class ArticlesService {
     return { success: true };
   }
 
-  async clap(publicId: string) {
+  async clap(publicId: string, userPublicId?: string) {
     assertUuid(publicId, 'Article');
     const article = await this.articleRepo.findOne({
       where: { public_id: publicId },
@@ -245,18 +341,53 @@ export class ArticlesService {
     });
     if (!article) throw new NotFoundException('Article not found');
 
-    await this.articleRepo.increment({ id: article.id }, 'claps', 1);
-
-    if (article.author) {
-      await this.notificationsService.create(
-        article.author.id,
-        'clap',
-        `Someone clapped for your article "${article.title}".`,
-        article.id,
-      );
+    const userId = await this.resolveUserId(userPublicId);
+    if (!userId) {
+      // Guest: just increment the counter (no per-user tracking)
+      await this.articleRepo.increment({ id: article.id }, 'claps', 1);
+      if (article.author) {
+        await this.notificationsService.create(
+          article.author.id,
+          'clap',
+          `Someone clapped for your article "${article.title}".`,
+          article.id,
+        );
+      }
+      return { success: true, claps: article.claps + 1, is_liked: true };
     }
 
-    return { success: true, claps: article.claps + 1 };
+    // Authenticated user: toggle per-user clap
+    const existing = await this.clapRepo.findOne({
+      where: { user_id: userId, article_id: article.id },
+    });
+
+    let isLiked: boolean;
+    if (existing) {
+      await this.clapRepo.remove(existing);
+      await this.articleRepo.decrement({ id: article.id }, 'claps', 1);
+      isLiked = false;
+    } else {
+      await this.clapRepo.save(
+        this.clapRepo.create({ user_id: userId, article_id: article.id }),
+      );
+      await this.articleRepo.increment({ id: article.id }, 'claps', 1);
+      isLiked = true;
+
+      if (article.author && article.author.id !== userId) {
+        await this.notificationsService.create(
+          article.author.id,
+          'clap',
+          `Someone clapped for your article "${article.title}".`,
+          article.id,
+        );
+      }
+    }
+
+    // Reload article to get the updated clap count
+    const updated = await this.articleRepo.findOne({
+      where: { id: article.id },
+    });
+    return { success: true, claps: updated?.claps ?? 0, is_liked: isLiked };
   }
 
   // ─── Comments ────────────────────────────────────────────────────────────────
@@ -465,7 +596,7 @@ export class ArticlesService {
   // ─── Related articles ──────────────────────────────────────────────────────
 
   /** Return articles related to the given one, split by author-same and tag-match. */
-  async getRelated(publicId: string) {
+  async getRelated(publicId: string, userPublicId?: string) {
     assertUuid(publicId, 'Article');
     const article = await this.articleRepo.findOne({
       where: { public_id: publicId },
@@ -485,14 +616,13 @@ export class ArticlesService {
     });
     const authorArticles = moreFromAuthor
       .filter((a) => a.public_id !== publicId)
-      .slice(0, 3)
-      .map((a) => this.mapToFrontendArticle(a));
+      .slice(0, 3);
 
     // 2) Related by tags (up to 3, newest first, excluding current + author picks)
-    const authorIds = new Set(authorArticles.map((a) => a.id));
-    let tagRelated: ReturnType<typeof this.mapToFrontendArticle>[] = [];
+    const authorPubIds = new Set(authorArticles.map((a) => a.public_id));
+    let tagResults: Article[] = [];
     if (article.tags && article.tags.length > 0) {
-      const tagResults = await this.articleRepo
+      tagResults = await this.articleRepo
         .createQueryBuilder('article')
         .leftJoinAndSelect('article.author', 'author')
         .where('article.is_draft = :isDraft', { isDraft: false })
@@ -501,14 +631,30 @@ export class ArticlesService {
         .orderBy('article.created_at', 'DESC')
         .take(10)
         .getMany();
-
-      tagRelated = tagResults
-        .filter((a) => !authorIds.has(a.public_id))
-        .slice(0, 3)
-        .map((a) => this.mapToFrontendArticle(a));
     }
 
-    return { moreFromAuthor, relatedByTags: tagRelated };
+    const tagRelated = tagResults
+      .filter((a) => !authorPubIds.has(a.public_id))
+      .slice(0, 3);
+
+    // Merge all related article IDs and fetch user state in one go
+    const allRelatedIds = [
+      ...authorArticles.map((a) => a.id),
+      ...tagRelated.map((a) => a.id),
+    ];
+    const stateMap = await this.getUserArticleStates(
+      allRelatedIds,
+      userPublicId,
+    );
+
+    return {
+      moreFromAuthor: authorArticles.map((a) =>
+        this.mapToFrontendArticle(a, stateMap.get(a.id)),
+      ),
+      relatedByTags: tagRelated.map((a) =>
+        this.mapToFrontendArticle(a, stateMap.get(a.id)),
+      ),
+    };
   }
 
   /** List articles bookmarked by a user (newest bookmark first) */

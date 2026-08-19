@@ -73,6 +73,7 @@ export function createDraftArticle(): Article {
     claps: 0,
     comments: 0,
     isMemberOnly: false,
+    isDraft: true,
   };
 }
 

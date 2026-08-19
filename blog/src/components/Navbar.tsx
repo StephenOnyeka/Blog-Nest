@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   SearchNormal1,
   Edit,
@@ -163,8 +163,28 @@ export function AuthModal({
   const [username, setUsername] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const { login, register } = useAuth();
+
+  useEffect(() => {
+    if (isOpen && mode === "signin") {
+      const savedRemember = localStorage.getItem("rememberMe") === "true";
+      setRememberMe(savedRemember);
+      if (savedRemember) {
+        setEmail(localStorage.getItem("savedEmail") || "");
+        setPassword(localStorage.getItem("savedPassword") || "");
+      } else {
+        setEmail("");
+        setPassword("");
+      }
+    } else if (isOpen && mode === "signup") {
+      setEmail("");
+      setPassword("");
+      setName("");
+      setUsername("");
+    }
+  }, [isOpen, mode]);
 
   if (!isOpen) return null;
 
@@ -174,6 +194,15 @@ export function AuthModal({
     try {
       if (mode === "signin") {
         await login({ email, password });
+        if (rememberMe) {
+          localStorage.setItem("rememberMe", "true");
+          localStorage.setItem("savedEmail", email);
+          localStorage.setItem("savedPassword", password);
+        } else {
+          localStorage.removeItem("rememberMe");
+          localStorage.removeItem("savedEmail");
+          localStorage.removeItem("savedPassword");
+        }
       } else {
         await register({ name, username, email, password });
       }
@@ -290,6 +319,23 @@ export function AuthModal({
               )}
             </button>
           </div>
+          {mode === "signin" && (
+            <div className="flex items-center gap-2 mb-6">
+              <input
+                id="rememberMe"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="w-4 h-4 rounded border-neutral-300 text-neutral-900 focus:ring-neutral-900 accent-neutral-900 cursor-pointer"
+              />
+              <label
+                htmlFor="rememberMe"
+                className="text-[14px] text-neutral-600 select-none cursor-pointer"
+              >
+                Remember me
+              </label>
+            </div>
+          )}
           <button
             className="w-full bg-neutral-900 text-white rounded-full py-3 mt-4 text-[15px] font-medium transition-opacity hover:opacity-85"
             type="submit"

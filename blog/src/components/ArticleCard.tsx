@@ -3,37 +3,66 @@ import { Link } from 'react-router-dom';
 import {
   Heart, HeartAdd, Save2, Message, More,
 } from 'iconsax-react';
+import { toast } from 'sonner';
 import type { Article } from '../data/mockData';
 import { formatClaps } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
 import { useAuthGate } from '../context/AuthGateContext';
-import { useToggleBookmark } from '../hooks/queries';
+import { useToggleBookmark, useClapArticle } from '../hooks/queries';
 
 interface ArticleCardProps {
   article: Article;
   showThumbnail?: boolean;
   /** Initial bookmarked state from the DB (e.g. from the bookmarks feed) */
   initialSaved?: boolean;
+  /** Initial clap state from the DB (per-user) */
+  initialLiked?: boolean;
+  /** Whether this story came from the API (DB-backed) rather than mock/local data */
+  isApi?: boolean;
 }
 
-export default function ArticleCard({ article, showThumbnail = true, initialSaved = false }: ArticleCardProps) {
+export default function ArticleCard({ article, showThumbnail = true, initialSaved = false, initialLiked = false, isApi = true }: ArticleCardProps) {
   const [saved, setSaved] = useState(initialSaved);
-  const [liked, setLiked] = useState(false);
+  const [liked, setLiked] = useState(initialLiked);
   const [claps, setClaps] = useState(article.claps);
   const { isLoggedIn } = useAuth();
   const { openAuthModal } = useAuthGate();
-  const toggleBookmark = useToggleBookmark(article.id);
+  const toggleBookmark = useToggleBookmark(isApi ? article.id : undefined);
+  const clapMut = useClapArticle(isApi ? article.id : undefined);
 
-  // Keep the button in sync when the DB bookmark state changes
+  // Keep the buttons in sync when the DB state changes
   useEffect(() => {
     setSaved(initialSaved);
   }, [initialSaved]);
 
+  useEffect(() => {
+    setLiked(initialLiked);
+  }, [initialLiked]);
+
   const handleClap = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setLiked(v => !v);
-    setClaps(c => liked ? c - 1 : c + 1);
+    // Mock/local articles (or guests) keep the local toggle behaviour
+    if (!isApi || !isLoggedIn) {
+      const next = !liked;
+      setLiked(next);
+      setClaps(c => next ? c + 1 : c - 1);
+      return;
+    }
+    // API-backed: flip instantly (optimistic), then reconcile with the server
+    const target = !liked;
+    setLiked(target);
+    setClaps(c => target ? c + 1 : c - 1);
+    clapMut.mutate(undefined, {
+      onSuccess: (res) => {
+        setClaps(res.claps);
+        if (typeof res.is_liked === 'boolean') setLiked(res.is_liked);
+      },
+      onError: () => {
+        setLiked(liked);
+        setClaps(c => target ? c - 1 : c + 1);
+      },
+    });
   };
 
   const handleSave = (e: React.MouseEvent) => {
@@ -43,9 +72,18 @@ export default function ArticleCard({ article, showThumbnail = true, initialSave
       openAuthModal();
       return;
     }
-    const next = !saved;
-    setSaved(next);
-    toggleBookmark.mutate(next);
+    if (!isApi) {
+      toast.info('This story can only be saved locally');
+      return;
+    }
+    // Flip instantly (optimistic), then reconcile with the server
+    const target = !saved;
+    setSaved(target);
+    // Pass the CURRENT state; the hook toggles it to the opposite server-side
+    toggleBookmark.mutate(saved, {
+      onSuccess: (res) => setSaved(res.bookmarked),
+      onError: () => setSaved(saved),
+    });
   };
 
   return (
