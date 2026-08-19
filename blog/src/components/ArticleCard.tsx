@@ -1,12 +1,14 @@
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Heart, HeartAdd, Save2, Message, More } from "iconsax-react";
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { Heart, HeartAdd, Save2, Message, More, Edit, Trash } from "iconsax-react";
 import { toast } from "sonner";
 import type { Article } from "../data/mockData";
 import { formatClaps } from "../data/mockData";
 import { useAuth } from "../context/AuthContext";
 import { useAuthGate } from "../context/AuthGateContext";
-import { useToggleBookmark, useClapArticle } from "../hooks/queries";
+import { useToggleBookmark, useClapArticle, queryKeys } from "../hooks/queries";
+import { deleteArticle as deleteServerArticle } from "../data/api";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ArticleCardProps {
   article: Article;
@@ -17,6 +19,8 @@ interface ArticleCardProps {
   initialLiked?: boolean;
   /** Whether this story came from the API (DB-backed) rather than mock/local data */
   isApi?: boolean;
+  /** Called after the author deletes the article, so parent lists can drop it */
+  onDeleted?: (id: string) => void;
 }
 
 export default function ArticleCard({
@@ -25,14 +29,44 @@ export default function ArticleCard({
   initialSaved = false,
   initialLiked = false,
   isApi = true,
+  onDeleted,
 }: ArticleCardProps) {
   const [saved, setSaved] = useState(initialSaved);
   const [liked, setLiked] = useState(initialLiked);
   const [claps, setClaps] = useState(article.claps);
-  const { isLoggedIn } = useAuth();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const { isLoggedIn, user } = useAuth();
   const { openAuthModal } = useAuthGate();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const moreRef = useRef<HTMLDivElement>(null);
   const toggleBookmark = useToggleBookmark(isApi ? article.id : undefined);
   const clapMut = useClapArticle(isApi ? article.id : undefined);
+
+  // Close the More menu on outside click or Esc
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
+        setMoreOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMoreOpen(false);
+    }
+    if (moreOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [moreOpen]);
+
+  // The logged-in author can edit / delete their own story
+  const isAuthor =
+    isApi && isLoggedIn && !!user && user.id === article.author.id;
 
   // Keep the buttons in sync when the DB state changes
   useEffect(() => {
@@ -88,6 +122,40 @@ export default function ArticleCard({
       onSuccess: (res) => setSaved(res.bookmarked),
       onError: () => setSaved(saved),
     });
+  };
+
+  const handleMore = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMoreOpen((v) => !v);
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMoreOpen(false);
+    navigate(`/write?edit=${article.id}`);
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMoreOpen(false);
+    if (!window.confirm(`Delete "${article.title}"? This cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteServerArticle(article.id);
+      toast.success("Story deleted");
+      queryClient.invalidateQueries({ queryKey: ["articles"] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.myBookmarks });
+      onDeleted?.(article.id);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete story");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   return (
@@ -175,12 +243,56 @@ export default function ArticleCard({
                 color="currentColor"
               />
             </button>
-            <button
-              className="flex items-center gap-1.5 text-neutral-400 text-[13px] font-medium transition-colors hover:text-neutral-900"
-              aria-label="More"
-            >
-              <More size={16} variant="Linear" color="currentColor" />
-            </button>
+            <div className="relative" ref={moreRef}>
+              <button
+                className="flex items-center gap-1.5 text-neutral-400 text-[13px] font-medium transition-colors hover:text-neutral-900"
+                onClick={handleMore}
+                aria-label="More"
+                aria-expanded={moreOpen}
+              >
+                <More size={16} variant="Linear" color="currentColor" />
+              </button>
+
+              {/* More menu */}
+              {moreOpen && (
+                <div className="absolute right-0 top-7 z-30 w-48 bg-white rounded-lg shadow-xl border border-neutral-200/80 py-1.5 animate-in fade-in zoom-in-95 duration-150"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                >
+                  {isAuthor ? (
+                    <>
+                      <button
+                        onClick={handleEdit}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors text-left cursor-pointer"
+                      >
+                        <Edit size={16} variant="Linear" color="currentColor" />
+                        Edit story
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer disabled:opacity-50"
+                      >
+                        <Trash size={16} variant="Linear" color="currentColor" />
+                        {deleting ? "Deleting…" : "Delete story"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setMoreOpen(false);
+                        toast.info("Reported. Thanks for helping keep BlogNest safe.");
+                      }}
+                      className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors text-left cursor-pointer"
+                    >
+                      Report story
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

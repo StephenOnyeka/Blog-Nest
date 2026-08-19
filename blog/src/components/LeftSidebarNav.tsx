@@ -7,16 +7,16 @@ import {
   Home2,
   Bookmark2,
   Profile,
-  Story,
   Chart,
   ProfileAdd,
+  DocumentText,
 } from "iconsax-react";
 
 const NAV_LINKS = [
   { label: "Home", icon: Home2, to: "/" },
   { label: "Library", icon: Bookmark2, to: "/library" },
   { label: "Profile", icon: Profile, to: "/profile/me" },
-  { label: "Stories", icon: Story, to: "/stories" },
+  { label: "Stories", icon: DocumentText, to: "/stories" },
   { label: "Stats", icon: Chart, to: "/stats" },
 ];
 

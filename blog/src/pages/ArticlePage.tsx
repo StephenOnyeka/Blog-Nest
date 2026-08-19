@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import parse from "html-react-parser";
 import DOMPurify from "dompurify";
@@ -13,6 +13,7 @@ import {
   Link1,
   Trash,
   Send2,
+  Edit,
 } from "iconsax-react";
 import PageTemplate from "../components/PageTemplate";
 import ArticleCard from "../components/ArticleCard";
@@ -30,6 +31,7 @@ import {
   useClapArticle,
   useRelatedArticles,
 } from "../hooks/queries";
+import { deleteArticle } from "../data/api";
 import { useAuth } from "../context/AuthContext";
 import { useAuthGate } from "../context/AuthGateContext";
 import { toast } from "sonner";
@@ -51,6 +53,9 @@ export default function ArticlePage() {
   const [following, setFollowing] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [toastMsg, setToastMsg] = useState("");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
 
   // Comments
   const [commentText, setCommentText] = useState("");
@@ -138,6 +143,26 @@ export default function ArticlePage() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Close the More menu on outside click or Esc
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
+        setMoreOpen(false);
+      }
+    }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") setMoreOpen(false);
+    }
+    if (moreOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      document.addEventListener("keydown", handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [moreOpen]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -236,6 +261,22 @@ export default function ArticlePage() {
     });
   };
 
+  const handleDeleteStory = async () => {
+    setMoreOpen(false);
+    if (!window.confirm(`Delete "${article.title}"? This cannot be undone.`)) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteArticle(article.id);
+      toast.success("Story deleted");
+      navigate("/");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to delete story");
+      setDeleting(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <PageTemplate>
@@ -282,6 +323,10 @@ export default function ArticlePage() {
 
   const showMoreFromAuthor = moreFromAuthor.length > 0;
   const showRelatedByTags = relatedByTags.length > 0;
+
+  // The logged-in author can edit their own published story
+  const isAuthor =
+    isApiArticle && isLoggedIn && !!user && user.id === article.author.id;
 
   return (
     <PageTemplate>
@@ -409,9 +454,54 @@ export default function ArticlePage() {
               >
                 <Share size={20} variant="Linear" color="currentColor" />
               </button>
-              <button className={toolbarBtn} aria-label="More">
-                <More size={20} variant="Linear" color="currentColor" />
-              </button>
+              <div className="relative" ref={moreRef}>
+                <button
+                  className={toolbarBtn}
+                  onClick={() => setMoreOpen((v) => !v)}
+                  aria-label="More"
+                  aria-expanded={moreOpen}
+                >
+                  <More size={20} variant="Linear" color="currentColor" />
+                </button>
+
+                {/* More menu */}
+                {moreOpen && (
+                  <div className="absolute right-0 top-8 z-30 w-48 bg-white rounded-lg shadow-xl border border-neutral-200/80 py-1.5 animate-in fade-in zoom-in-95 duration-150">
+                    {isAuthor ? (
+                      <>
+                        <button
+                          onClick={() => {
+                            setMoreOpen(false);
+                            navigate(`/write?edit=${article.id}`);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors text-left cursor-pointer"
+                        >
+                          <Edit size={16} variant="Linear" color="currentColor" />
+                          Edit story
+                        </button>
+                        <button
+                          onClick={handleDeleteStory}
+                          disabled={deleting}
+                          className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors text-left cursor-pointer disabled:opacity-50"
+                        >
+                          <Trash size={16} variant="Linear" color="currentColor" />
+                          {deleting ? "Deleting…" : "Delete story"}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setMoreOpen(false);
+                          showToast("Reported. Thanks for keeping BlogNest safe!");
+                        }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-neutral-700 hover:bg-neutral-50 transition-colors text-left cursor-pointer"
+                      >
+                        Report story
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

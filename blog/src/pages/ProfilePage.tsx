@@ -364,6 +364,11 @@ export default function ProfilePage() {
                       initialSaved={card.isBookmarked}
                       initialLiked={card.isLiked}
                       isApi
+                      onDeleted={(deletedId) =>
+                        setArticles((prev) =>
+                          prev.filter((a) => a.id !== deletedId),
+                        )
+                      }
                     />
                   );
                 })}
