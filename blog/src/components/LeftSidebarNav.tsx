@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useAuthGate } from "../context/AuthGateContext";
 import { useFollowing } from "../hooks/queries";
 import { WHO_TO_FOLLOW } from "../data/mockData";
 import {
@@ -22,6 +23,7 @@ const NAV_LINKS = [
 export default function LeftSidebarNav() {
   const location = useLocation();
   const { user, isLoggedIn } = useAuth();
+  const { openAuthModal } = useAuthGate();
   const { data: followedUsers, isLoading } = useFollowing(user?.id);
 
   // Resolve profile link to actual username if logged in
@@ -53,26 +55,42 @@ export default function LeftSidebarNav() {
             to === "/"
               ? location.pathname === "/"
               : location.pathname.startsWith(to);
+          const isProfileGuest = label === "Profile" && !isLoggedIn;
+          const className = `flex items-center gap-3 px-4 py-2.5 rounded-lg text-[15px] font-normal transition-colors ${
+            isActive
+              ? "text-neutral-900 font-medium"
+              : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50"
+          }`;
           return (
             <li key={label} className="relative">
               {isActive && (
                 <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-neutral-900" />
               )}
-              <Link
-                to={to}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-[15px] font-normal transition-colors ${
-                  isActive
-                    ? "text-neutral-900 font-medium"
-                    : "text-neutral-500 hover:text-neutral-900 hover:bg-neutral-50"
-                }`}
-              >
-                <Icon
-                  size={22}
-                  variant={isActive ? "Bold" : "Linear"}
-                  color="currentColor"
-                />
-                <span>{label}</span>
-              </Link>
+              {isProfileGuest ? (
+                <button
+                  onClick={openAuthModal}
+                  className={`${className} w-full cursor-pointer`}
+                >
+                  <Icon
+                    size={22}
+                    variant="Linear"
+                    color="currentColor"
+                  />
+                  <span>{label}</span>
+                </button>
+              ) : (
+                <Link
+                  to={to}
+                  className={className}
+                >
+                  <Icon
+                    size={22}
+                    variant={isActive ? "Bold" : "Linear"}
+                    color="currentColor"
+                  />
+                  <span>{label}</span>
+                </Link>
+              )}
             </li>
           );
         })}

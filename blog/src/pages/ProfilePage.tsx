@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { Edit, Link1, People, CloseCircle, Gallery } from "iconsax-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -14,35 +14,19 @@ import {
   followUser,
   unfollowUser,
   getArticles,
-  getMyDrafts,
-  deleteArticle as deleteServerArticle,
   type ApiUser,
   type ApiArticle,
 } from "../data/api";
-import {
-  getUserArticles,
-  deleteArticle as deleteLocalArticle,
-} from "../data/articleStore";
-import { useMyBookmarks, queryKeys } from "../hooks/queries";
+import { queryKeys } from "../hooks/queries";
 import { normalizeApiArticle } from "../data/normalize";
-
-/** A draft shown in the Drafts tab — either on the backend or localStorage */
-type DraftItem = {
-  id: string;
-  title: string;
-  subtitle: string;
-  updatedAt: string;
-  isLocal: boolean;
-};
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
-  const [activeTab, setActiveTab] = useState<
-    "home" | "drafts" | "lists" | "about"
-  >("home");
+  const [activeTab, setActiveTab] = useState<"home" | "about">("home");
   const { user: currentUser, isLoggedIn } = useAuth();
   const { openAuthModal } = useAuthGate();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   // Determine if viewing own profile
   const isOwn =
@@ -50,17 +34,19 @@ export default function ProfilePage() {
     (currentUser &&
       (username === currentUser.username || username === currentUser.id));
 
-  // Bookmarked articles (only meaningful on the user's own profile)
-  const { data: bookmarkedArticles, isLoading: bookmarksLoading } =
-    useMyBookmarks(isOwn && isLoggedIn && activeTab === "lists");
+  // The own-profile section is protected — redirect guests to home + auth modal
+  useEffect(() => {
+    if (isOwn && !isLoggedIn && username === "me") {
+      navigate("/", { replace: true });
+      openAuthModal();
+    }
+  }, [isOwn, isLoggedIn, username, navigate, openAuthModal]);
 
   const [profile, setProfile] = useState<ApiUser | null>(null);
   const [articles, setArticles] = useState<ApiArticle[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isFollowLoading, setIsFollowLoading] = useState(false);
-  const [drafts, setDrafts] = useState<DraftItem[]>([]);
-  const [draftsLoading, setDraftsLoading] = useState(false);
 
   // Modals & About tab states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -106,67 +92,6 @@ export default function ProfilePage() {
       isMounted = false;
     };
   }, [username, isOwn, currentUser]);
-
-  // Load the user's own drafts (only visible on their own profile).
-  // Local drafts (localStorage) are merged with backend drafts here.
-  useEffect(() => {
-    if (!(isOwn && activeTab === "drafts")) return;
-    let mounted = true;
-    setDraftsLoading(true);
-    const load = async () => {
-      const localDrafts = getUserArticles().filter((a) => a.isDraft);
-      let apiDrafts: ApiArticle[] = [];
-      if (isLoggedIn) {
-        try {
-          apiDrafts = await getMyDrafts();
-        } catch {
-          apiDrafts = [];
-        }
-      }
-      if (!mounted) return;
-      const items: DraftItem[] = [
-        ...localDrafts.map((d) => ({
-          id: d.id,
-          title: d.title || "Untitled",
-          subtitle: d.subtitle || "No subtitle yet.",
-          updatedAt: d.publishedAt,
-          isLocal: true,
-        })),
-        ...apiDrafts.map((d) => ({
-          id: d.id,
-          title: d.title || "Untitled",
-          subtitle: d.subtitle || "No subtitle yet.",
-          updatedAt: d.updated_at
-            ? new Date(d.updated_at).toLocaleDateString("en-US", {
-                month: "short",
-                day: "numeric",
-              })
-            : "Recently edited",
-          isLocal: false,
-        })),
-      ];
-      setDrafts(items);
-      setDraftsLoading(false);
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, [isOwn, isLoggedIn, activeTab]);
-
-  const handleDeleteDraft = async (draft: DraftItem) => {
-    try {
-      if (draft.isLocal) {
-        deleteLocalArticle(draft.id);
-      } else {
-        await deleteServerArticle(draft.id);
-      }
-      setDrafts((prev) => prev.filter((d) => d.id !== draft.id));
-      toast.success("Draft deleted");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Failed to delete draft");
-    }
-  };
 
   // Handle Follow / Unfollow toggle
   const handleFollowToggle = async () => {
@@ -393,10 +318,7 @@ export default function ProfilePage() {
 
           {/* Tabs */}
           <div className="flex gap-0 border-b border-transparent overflow-x-auto">
-            {(isOwn
-              ? (["home", "drafts", "lists", "about"] as const)
-              : (["home", "lists", "about"] as const)
-            ).map((tab) => (
+            {(["home", "about"] as const).map((tab) => (
               <button
                 key={tab}
                 className={`text-sm font-medium px-1 pb-3 mr-5 sm:mr-6 whitespace-nowrap border-b-2 transition-colors capitalize ${
@@ -445,115 +367,6 @@ export default function ProfilePage() {
                     />
                   );
                 })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "drafts" && (
-          <div className="max-w-[740px]">
-            {draftsLoading ? (
-              <div className="flex justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
-              </div>
-            ) : drafts.length === 0 ? (
-              <div className="text-center py-12 text-neutral-500 bg-neutral-50 rounded-xl border border-neutral-100 p-8">
-                <p className="text-base font-medium text-neutral-700">
-                  No drafts yet.
-                </p>
-                <Link
-                  to="/write"
-                  className="inline-block mt-4 bg-green-700 text-white px-6 py-2.5 rounded-full text-sm font-medium hover:bg-green-800 transition-colors shadow-sm"
-                >
-                  Start writing
-                </Link>
-              </div>
-            ) : (
-              <div className="flex flex-col">
-                {drafts.map((draft) => (
-                  <div
-                    key={draft.id}
-                    className="py-6 border-b border-neutral-100 first:pt-2"
-                  >
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1.5">
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-neutral-500 bg-neutral-100 rounded px-1.5 py-0.5">
-                            Draft
-                          </span>
-                          <span className="text-[13px] text-neutral-400">
-                            {draft.updatedAt}
-                          </span>
-                        </div>
-                        <h3 className="text-lg font-bold text-neutral-900 leading-snug mb-1">
-                          {draft.title}
-                        </h3>
-                        <p className="text-[15px] text-neutral-500 leading-relaxed line-clamp-2">
-                          {draft.subtitle}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Link
-                          to={`/write?edit=${draft.id}`}
-                          className="text-sm font-medium text-neutral-900 border border-neutral-200 rounded-full px-4 py-1.5 hover:bg-neutral-50 transition-colors"
-                        >
-                          Edit
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteDraft(draft)}
-                          className="text-sm text-neutral-400 hover:text-red-600 transition-colors bg-transparent border-none cursor-pointer font-sans"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === "lists" && (
-          <div className="max-w-[740px]">
-            {bookmarksLoading ? (
-              <div className="flex justify-center py-16">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-neutral-900"></div>
-              </div>
-            ) : !isLoggedIn || !isOwn ? (
-              <div className="text-center py-16 text-neutral-500 bg-neutral-50 rounded-xl border border-neutral-100">
-                <Save2Icon />
-                <p className="text-base mt-4 font-medium text-neutral-700">
-                  No saved lists yet
-                </p>
-                <p className="text-sm text-neutral-400 mt-1">
-                  Bookmarked stories will appear here.
-                </p>
-              </div>
-            ) : bookmarkedArticles && bookmarkedArticles.length > 0 ? (
-              <div className="flex flex-col space-y-6">
-                {bookmarkedArticles.map((article) => {
-                  const card = normalizeApiArticle(article);
-                  return (
-                    <ArticleCard
-                      key={card.id}
-                      article={card}
-                      initialSaved
-                      initialLiked={card.isLiked}
-                      isApi
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-neutral-500 bg-neutral-50 rounded-xl border border-neutral-100">
-                <Save2Icon />
-                <p className="text-base mt-4 font-medium text-neutral-700">
-                  No saved stories yet
-                </p>
-                <p className="text-sm text-neutral-400 mt-1">
-                  Tap the bookmark icon on any story to save it here.
-                </p>
               </div>
             )}
           </div>
@@ -851,21 +664,5 @@ function EditProfileModal({
         </form>
       </div>
     </div>
-  );
-}
-
-function Save2Icon() {
-  return (
-    <svg
-      className="mx-auto"
-      width="48"
-      height="48"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-    >
-      <path d="M17 3H7C5.9 3 5 3.9 5 5v16l7-3 7 3V5c0-1.1-.9-2-2-2z" />
-    </svg>
   );
 }

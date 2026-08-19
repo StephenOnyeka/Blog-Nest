@@ -14,6 +14,8 @@ import ProfilePage from "./pages/ProfilePage";
 import WritePage from "./pages/WritePage";
 import SearchPage from "./pages/SearchPage";
 import AuthCallbackPage from "./pages/AuthCallbackPage";
+import LibraryPage from "./pages/LibraryPage";
+import StoriesPage from "./pages/StoriesPage";
 
 export default function App() {
   return (
@@ -34,6 +36,22 @@ export default function App() {
               }
             />
             <Route path="/search" element={<SearchPage />} />
+            <Route
+              path="/library"
+              element={
+                <ProtectedRoute>
+                  <LibraryPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/stories"
+              element={
+                <ProtectedRoute>
+                  <StoriesPage />
+                </ProtectedRoute>
+              }
+            />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -6,6 +6,8 @@ import {
   SearchNormal1,
   Notification,
   Profile,
+  Bookmark2,
+  Story,
 } from "iconsax-react";
 import { useAuth } from "../context/AuthContext";
 import { useAuthGate } from "../context/AuthGateContext";
@@ -20,6 +22,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { label: "Home", icon: Home2, to: "/" },
+  { label: "Library", icon: Bookmark2, to: "/library" },
+  { label: "Stories", icon: Story, to: "/stories" },
   { label: "Write", icon: Edit, action: "write" },
   { label: "Search", icon: SearchNormal1, to: "/search" },
   { label: "Notify", icon: Notification, action: "notifications" },
@@ -96,11 +100,11 @@ export default function MobileNav() {
                 }`}
               >
                 <Icon
-                  size={22}
+                  size={20}
                   variant={active ? "Bold" : "Linear"}
                   color="currentColor"
                 />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <span className="text-[9px] font-medium">{item.label}</span>
               </button>
             );
           })}
