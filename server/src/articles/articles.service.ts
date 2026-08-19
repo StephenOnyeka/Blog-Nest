@@ -12,6 +12,7 @@ import { Comment } from '../entities/comment.entity';
 import { Bookmark } from '../entities/bookmark.entity';
 import { Clap } from '../entities/clap.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SearchService } from '../search/search.service';
 
 /** Strict UUID v4 regex */
 const UUID_RE =
@@ -39,6 +40,7 @@ export class ArticlesService {
     @InjectRepository(Clap)
     private readonly clapRepo: Repository<Clap>,
     private readonly notificationsService: NotificationsService,
+    private readonly searchService: SearchService,
   ) {}
 
   private toPublicComment(comment: Comment) {
@@ -259,6 +261,9 @@ export class ArticlesService {
       );
     }
 
+    // Keep the search index in sync (drafts are dropped automatically)
+    await this.searchService.upsertArticle(savedArticle.public_id);
+
     // Reload with author relation
     return this.findOne(savedArticle.public_id);
   }
@@ -313,6 +318,9 @@ export class ArticlesService {
       );
     }
 
+    // Keep the search index in sync
+    await this.searchService.upsertArticle(article.public_id);
+
     return this.mapToFrontendArticle(article);
   }
 
@@ -330,6 +338,10 @@ export class ArticlesService {
     }
 
     await this.articleRepo.remove(article);
+
+    // Keep the search index in sync
+    await this.searchService.removeArticle(article.public_id);
+
     return { success: true };
   }
 

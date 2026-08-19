@@ -197,6 +197,30 @@ export interface CreateArticlePayload {
 
 export type UpdateArticlePayload = Partial<CreateArticlePayload>;
 
+/** Search modes supported by the backend Orama index */
+export type SearchMode = "fulltext" | "hybrid" | "vector";
+
+export interface SearchResponse {
+  articles: ApiArticle[];
+  total: number;
+  mode: string;
+  limit: number;
+  offset: number;
+}
+
+/** Search published articles via the backend Orama index (hybrid by default) */
+export const searchArticles = async (
+  q: string,
+  mode: SearchMode = "hybrid",
+  limit = 20,
+  offset = 0,
+): Promise<SearchResponse> => {
+  const res = await api.get<SearchResponse>("/search", {
+    params: { q, mode, limit, offset },
+  });
+  return res.data;
+};
+
 /** List published articles (paginated, filterable) */
 export const getArticles = async (
   params: GetArticlesParams = {},

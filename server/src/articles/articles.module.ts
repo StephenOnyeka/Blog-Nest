@@ -11,6 +11,7 @@ import { Comment } from '../entities/comment.entity';
 import { Bookmark } from '../entities/bookmark.entity';
 import { Clap } from '../entities/clap.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { SearchModule } from '../search/search.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
       }),
     }),
     NotificationsModule,
+    SearchModule,
   ],
   controllers: [ArticlesController],
   providers: [ArticlesService],

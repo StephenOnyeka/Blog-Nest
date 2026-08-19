@@ -10,6 +10,7 @@ import { ArticlesModule } from './articles/articles.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { SeedModule } from './seed/seed.module';
+import { SearchModule } from './search/search.module';
 import { Profile } from './entities/profile.entity';
 import { Follow } from './entities/follow.entity';
 import { Article } from './entities/article.entity';
@@ -49,6 +50,7 @@ import { Clap } from './entities/clap.entity';
     NotificationsModule,
     SubscriptionsModule,
     SeedModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],

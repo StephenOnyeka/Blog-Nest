@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { SearchNormal1 } from "iconsax-react";
 import Fuse from "fuse.js";
@@ -6,76 +6,64 @@ import PageTemplate from "../components/PageTemplate";
 import ArticleCard from "../components/ArticleCard";
 import { ARTICLES, AUTHORS, RECOMMENDED_TOPICS } from "../data/mockData";
 import type { Article } from "../data/mockData";
-import { api } from "../lib/api";
+import { searchArticles, type SearchMode } from "../data/api";
+import { normalizeApiArticle } from "../data/normalize";
 
-// Map a backend article record to the frontend Article shape.
-function normalizeArticle(a: any): Article {
-  return {
-    id: a.id,
-    title: a.title ?? "",
-    subtitle: a.subtitle ?? "",
-    body: a.body ?? "",
-    author: {
-      id: a.author?.id ?? "",
-      name: a.author?.name ?? "Unknown",
-      username: a.author?.username ?? "",
-      avatar: a.author?.avatar ?? "",
-      bio: a.author?.bio ?? "",
-      followers: a.author?.followersCount ?? 0,
-      following: a.author?.followingCount ?? 0,
-    },
-    publishedAt: a.published_at
-      ? new Date(a.published_at).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        })
-      : "",
-    readTime: a.read_time ?? 1,
-    tags: a.tags ?? [],
-    thumbnail: a.thumbnail ?? "",
-    claps: a.claps ?? 0,
-    comments: a.comments_count ?? 0,
-    isMemberOnly: a.is_member_only ?? false,
-  };
-}
+const MODES: { value: SearchMode; label: string }[] = [
+  { value: "hybrid", label: "Hybrid" },
+  { value: "fulltext", label: "Full-text" },
+  { value: "vector", label: "Vector" },
+];
 
 export default function SearchPage() {
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(params.get("q") || "");
-  const [liveArticles, setLiveArticles] = useState<Article[]>([]);
+  const [mode, setMode] = useState<SearchMode>("hybrid");
+  const [results, setResults] = useState<Article[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [usingApi, setUsingApi] = useState(true);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const q = query.trim();
+
+  // Debounced search against the backend Orama index
   useEffect(() => {
-    api
-      .get("/articles")
-      .then((res) => {
-        const list = res.data?.articles ?? res.data ?? [];
-        setLiveArticles(list.map(normalizeArticle));
-      })
-      .catch(() => setLiveArticles([]));
-  }, []);
+    if (!q) {
+      setResults([]);
+      setTotal(0);
+      return;
+    }
 
-  const allArticles = useMemo(() => {
-    const byId = new Map<string, Article>();
-    for (const a of ARTICLES) byId.set(a.id, a);
-    for (const a of liveArticles) byId.set(a.id, a);
-    return [...byId.values()];
-  }, [liveArticles]);
+    setLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await searchArticles(q, mode, 20);
+        setResults(res.articles.map(normalizeApiArticle));
+        setTotal(res.total);
+        setUsingApi(true);
+      } catch {
+        // API down → fall back to filtering the mock catalog client-side
+        const fuse = new Fuse(ARTICLES, {
+          keys: ["title", "subtitle", "tags", "author.name"],
+          threshold: 0.4,
+          ignoreLocation: true,
+        });
+        setResults(fuse.search(q).map((r) => r.item));
+        setTotal(0);
+        setUsingApi(false);
+      } finally {
+        setLoading(false);
+      }
+    }, 250);
 
-  const liveArticleIds = useMemo(
-    () => new Set(liveArticles.map((a) => a.id)),
-    [liveArticles],
-  );
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [q, mode]);
 
-  const articleFuse = useMemo(
-    () =>
-      new Fuse(allArticles, {
-        keys: ["title", "subtitle", "tags", "author.name"],
-        threshold: 0.4,
-        ignoreLocation: true,
-      }),
-    [allArticles],
-  );
-
+  // People results stay client-side over the mock authors catalogue
   const authorFuse = useMemo(
     () =>
       new Fuse(AUTHORS, {
@@ -85,17 +73,13 @@ export default function SearchPage() {
       }),
     [],
   );
-
-  const q = query.trim();
-
-  const matchedArticles = q ? articleFuse.search(q).map((r) => r.item) : [];
   const matchedAuthors = q ? authorFuse.search(q).map((r) => r.item) : [];
 
   return (
     <PageTemplate>
       <div className="pt-2 pb-12">
         {/* Search input */}
-        <div className="flex items-center gap-3 bg-neutral-50 rounded-full px-5 py-3 mb-8 max-w-full sm:max-w-[600px]">
+        <div className="flex items-center gap-3 bg-neutral-50 rounded-full px-5 py-3 mb-4 max-w-full sm:max-w-[600px]">
           <SearchNormal1
             size={20}
             className="text-neutral-400 shrink-0"
@@ -114,6 +98,28 @@ export default function SearchPage() {
             className="border-none bg-transparent outline-none text-lg text-neutral-900 w-full font-sans placeholder-neutral-400"
           />
         </div>
+
+        {/* Search mode toggle */}
+        {q && (
+          <div className="flex items-center gap-2 mb-8">
+            <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wide mr-1">
+              Mode
+            </span>
+            {MODES.map((m) => (
+              <button
+                key={m.value}
+                onClick={() => setMode(m.value)}
+                className={`text-xs font-medium px-3 py-1.5 rounded-full transition-colors cursor-pointer ${
+                  mode === m.value
+                    ? "bg-neutral-900 text-white"
+                    : "bg-neutral-100 text-neutral-600 hover:bg-neutral-200"
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {!q && (
           <>
@@ -174,19 +180,21 @@ export default function SearchPage() {
         {q && (
           <>
             {/* Stories results */}
-            {matchedArticles.length > 0 && (
+            {(loading || results.length > 0) && (
               <div className="mb-10">
                 <h2 className="text-lg font-bold text-neutral-900 mb-4">
-                  Stories ({matchedArticles.length})
+                  Stories ({loading ? "…" : total > 0 ? total : results.length})
                 </h2>
                 <div className="flex flex-col max-w-[740px]">
-                  {matchedArticles.map((a) => (
-                    <ArticleCard
-                      key={a.id}
-                      article={a}
-                      isApi={liveArticleIds.has(a.id)}
-                    />
-                  ))}
+                  {loading && (
+                    <div className="text-sm text-neutral-400 py-4">
+                      Searching…
+                    </div>
+                  )}
+                  {!loading &&
+                    results.map((a) => (
+                      <ArticleCard key={a.id} article={a} isApi={usingApi} />
+                    ))}
                 </div>
               </div>
             )}
@@ -226,15 +234,19 @@ export default function SearchPage() {
               </div>
             )}
 
-            {matchedArticles.length === 0 && matchedAuthors.length === 0 && (
-              <div className="text-center py-16 text-neutral-500">
-                <div className="text-5xl mb-4">🔍</div>
-                <p className="text-lg font-medium text-neutral-900 mb-2">
-                  No results for "{q}"
-                </p>
-                <p>Try searching for something else, or check your spelling.</p>
-              </div>
-            )}
+            {!loading &&
+              results.length === 0 &&
+              matchedAuthors.length === 0 && (
+                <div className="text-center py-16 text-neutral-500">
+                  <div className="text-5xl mb-4">🔍</div>
+                  <p className="text-lg font-medium text-neutral-900 mb-2">
+                    No results for "{q}"
+                  </p>
+                  <p>
+                    Try searching for something else, or check your spelling.
+                  </p>
+                </div>
+              )}
           </>
         )}
       </div>
