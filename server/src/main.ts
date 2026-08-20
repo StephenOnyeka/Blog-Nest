@@ -9,7 +9,7 @@ async function bootstrap() {
   // CORS configuration
   app.use(
     cors({
-      origin: 'http://localhost:5173',
+      origin: 'https://blog-nest-frontend.onrender.com',
       credentials: true,
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
       allowedHeaders: 'Content-Type, Authorization',
