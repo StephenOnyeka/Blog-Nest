@@ -23,6 +23,32 @@ import {
 import { ArticlesService } from './articles.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtService } from '@nestjs/jwt';
+import type { AuthenticatedRequest } from '../common/auth-request';
+import type { Request as ExpressRequest } from 'express';
+
+interface JwtPayload {
+  sub?: string;
+}
+
+interface CommentBody {
+  body: string;
+  parentId?: string;
+}
+
+interface ArticleBody {
+  title?: string;
+  subtitle?: string;
+  body?: string;
+  cover_image?: string;
+  thumbnail?: string;
+  tags?: string[];
+  is_draft?: boolean;
+  isDraft?: boolean;
+  is_member_only?: boolean;
+  isMemberOnly?: boolean;
+  read_time?: number;
+  readTime?: number;
+}
 
 @ApiTags('Articles')
 @Controller('articles')
@@ -33,12 +59,14 @@ export class ArticlesController {
   ) {}
 
   /** Best-effort extraction of user public_id (UUID) from the optional Bearer token */
-  private extractUserPublicId(req: any): string | undefined {
+  private extractUserPublicId(
+    req: ExpressRequest | undefined,
+  ): string | undefined {
     try {
-      const auth = req.headers?.authorization ?? '';
+      const auth = req?.headers?.authorization ?? '';
       const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
       if (!token) return undefined;
-      const payload = this.jwtService.verify(token);
+      const payload = this.jwtService.verify<JwtPayload>(token);
       return payload.sub ?? undefined;
     } catch {
       return undefined;
@@ -63,7 +91,7 @@ export class ArticlesController {
     @Query('author_id') authorId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Request() req?: any,
+    @Request() req?: ExpressRequest,
   ) {
     return this.articlesService.findAll(
       tag,
@@ -79,7 +107,7 @@ export class ArticlesController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'List articles bookmarked by the logged-in user' })
   @ApiResponse({ status: 200, description: 'Array of bookmarked articles' })
-  async getBookmarked(@Request() req: any) {
+  async getBookmarked(@Request() req: AuthenticatedRequest) {
     return this.articlesService.getBookmarkedArticles(req.user.userId);
   }
 
@@ -117,8 +145,8 @@ export class ArticlesController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async addComment(
     @Param('id') id: string,
-    @Body() body: any,
-    @Request() req: any,
+    @Body() body: CommentBody,
+    @Request() req: AuthenticatedRequest,
   ) {
     const text = body?.body?.trim();
     if (!text) throw new BadRequestException('Comment body is required');
@@ -142,7 +170,7 @@ export class ArticlesController {
   async deleteComment(
     @Param('id') id: string,
     @Param('commentId') commentId: string,
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.articlesService.deleteComment(id, commentId, req.user.userId);
   }
@@ -155,7 +183,10 @@ export class ArticlesController {
   })
   @ApiParam({ name: 'id', description: 'Article public UUID' })
   @ApiResponse({ status: 200, description: 'Bookmark status' })
-  async getBookmarkStatus(@Param('id') id: string, @Request() req: any) {
+  async getBookmarkStatus(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.articlesService.getBookmarkStatus(id, req.user.userId);
   }
 
@@ -165,7 +196,10 @@ export class ArticlesController {
   @ApiOperation({ summary: 'Bookmark an article' })
   @ApiParam({ name: 'id', description: 'Article public UUID' })
   @ApiResponse({ status: 201, description: 'Article bookmarked' })
-  async bookmark(@Param('id') id: string, @Request() req: any) {
+  async bookmark(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.articlesService.bookmark(id, req.user.userId);
   }
 
@@ -175,7 +209,10 @@ export class ArticlesController {
   @ApiOperation({ summary: 'Remove a bookmark from an article' })
   @ApiParam({ name: 'id', description: 'Article public UUID' })
   @ApiResponse({ status: 200, description: 'Bookmark removed' })
-  async unbookmark(@Param('id') id: string, @Request() req: any) {
+  async unbookmark(
+    @Param('id') id: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.articlesService.unbookmark(id, req.user.userId);
   }
 
@@ -187,7 +224,7 @@ export class ArticlesController {
     description: 'Related articles split by author and tags',
   })
   @ApiResponse({ status: 404, description: 'Article not found' })
-  async getRelated(@Param('id') id: string, @Request() req?: any) {
+  async getRelated(@Param('id') id: string, @Request() req?: ExpressRequest) {
     return this.articlesService.getRelated(id, this.extractUserPublicId(req));
   }
 
@@ -196,7 +233,7 @@ export class ArticlesController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: "List the logged-in user's drafts (private)" })
   @ApiResponse({ status: 200, description: 'Array of draft articles' })
-  async getMyDrafts(@Request() req: any) {
+  async getMyDrafts(@Request() req: AuthenticatedRequest) {
     return this.articlesService.getMyDrafts(req.user.userId);
   }
 
@@ -205,7 +242,7 @@ export class ArticlesController {
   @ApiParam({ name: 'id', description: 'Article public UUID' })
   @ApiResponse({ status: 200, description: 'Article details' })
   @ApiResponse({ status: 404, description: 'Article not found' })
-  async findOne(@Param('id') id: string, @Request() req?: any) {
+  async findOne(@Param('id') id: string, @Request() req?: ExpressRequest) {
     return this.articlesService.findOne(id, this.extractUserPublicId(req));
   }
 
@@ -244,7 +281,10 @@ export class ArticlesController {
   })
   @ApiResponse({ status: 201, description: 'Article successfully created' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async create(@Body() body: any, @Request() req: any) {
+  async create(
+    @Body() body: ArticleBody,
+    @Request() req: AuthenticatedRequest,
+  ) {
     return this.articlesService.create(req.user.userId, body);
   }
 
@@ -257,8 +297,8 @@ export class ArticlesController {
   @ApiResponse({ status: 403, description: 'Forbidden (Not the author)' })
   async update(
     @Param('id') id: string,
-    @Body() body: any,
-    @Request() req: any,
+    @Body() body: ArticleBody,
+    @Request() req: AuthenticatedRequest,
   ) {
     return this.articlesService.update(id, req.user.userId, body);
   }
@@ -270,7 +310,7 @@ export class ArticlesController {
   @ApiParam({ name: 'id', description: 'Article public UUID' })
   @ApiResponse({ status: 200, description: 'Article deleted' })
   @ApiResponse({ status: 403, description: 'Forbidden (Not the author)' })
-  async remove(@Param('id') id: string, @Request() req: any) {
+  async remove(@Param('id') id: string, @Request() req: AuthenticatedRequest) {
     return this.articlesService.remove(id, req.user.userId);
   }
 
@@ -278,7 +318,7 @@ export class ArticlesController {
   @ApiOperation({ summary: 'Increment clap count for an article' })
   @ApiParam({ name: 'id', description: 'Article public UUID' })
   @ApiResponse({ status: 200, description: 'Clap registered' })
-  async clap(@Param('id') id: string, @Request() req?: any) {
+  async clap(@Param('id') id: string, @Request() req?: ExpressRequest) {
     return this.articlesService.clap(id, this.extractUserPublicId(req));
   }
 }

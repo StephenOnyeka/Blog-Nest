@@ -6,11 +6,31 @@ import { NotificationsGateway } from './notifications.gateway';
 import { Notification } from '../entities/notification.entity';
 import { Profile } from '../entities/profile.entity';
 
+// Narrow mock interfaces for only the methods used in tests
+interface NotificationRepoMock {
+  find: jest.Mock;
+  findOne: jest.Mock;
+  count: jest.Mock;
+  save: jest.Mock;
+  create: jest.Mock;
+  remove: jest.Mock;
+  update: jest.Mock;
+  createQueryBuilder: jest.Mock;
+}
+
+interface ProfileRepoMock {
+  findOne: jest.Mock;
+}
+
+interface GatewayMock {
+  emitNotification: jest.Mock;
+}
+
 describe('NotificationsService', () => {
   let service: NotificationsService;
-  let notificationRepoMock: any;
-  let profileRepoMock: any;
-  let gatewayMock: any;
+  let notificationRepoMock: NotificationRepoMock;
+  let profileRepoMock: ProfileRepoMock;
+  let gatewayMock: GatewayMock;
 
   const mockProfile = {
     id: 1,
@@ -156,7 +176,7 @@ describe('NotificationsService', () => {
       expect(notificationRepoMock.save).toHaveBeenCalledWith(
         expect.objectContaining({
           is_read: true,
-          read_at: expect.any(Date),
+          read_at: expect.any(Date) as Date,
         }),
       );
     });

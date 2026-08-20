@@ -48,4 +48,4 @@ async function bootstrap() {
     `📚 Swagger API Docs available at: http://localhost:${process.env.PORT ?? 3000}/api/docs`,
   );
 }
-bootstrap();
+void bootstrap();

@@ -24,6 +24,23 @@ function assertUuid(value: string, label = 'id') {
   }
 }
 
+/** Shape of article data sent from the frontend (snake_case & camelCase both accepted) */
+interface ArticleData {
+  title?: string;
+  subtitle?: string;
+  body?: string;
+  cover_image?: string;
+  thumbnail?: string;
+  tags?: string[];
+  is_draft?: boolean;
+  isDraft?: boolean;
+  is_member_only?: boolean;
+  isMemberOnly?: boolean;
+  read_time?: number;
+  readTime?: number;
+  public_id?: string;
+}
+
 @Injectable()
 export class ArticlesService {
   constructor(
@@ -231,7 +248,7 @@ export class ArticlesService {
     return articles.map((a) => this.mapToFrontendArticle(a));
   }
 
-  async create(authorPublicId: string, data: any) {
+  async create(authorPublicId: string, data: ArticleData) {
     const author = await this.profileRepo.findOne({
       where: { public_id: authorPublicId },
     });
@@ -249,7 +266,7 @@ export class ArticlesService {
       published_at: isDraft ? null : new Date(),
     });
 
-    const savedArticle = (await this.articleRepo.save(article)) as any;
+    const savedArticle = await this.articleRepo.save(article);
 
     // If published immediately, fan-out notifications to followers
     if (!isDraft) {
@@ -268,7 +285,7 @@ export class ArticlesService {
     return this.findOne(savedArticle.public_id);
   }
 
-  async update(publicId: string, authorPublicId: string, data: any) {
+  async update(publicId: string, authorPublicId: string, data: ArticleData) {
     assertUuid(publicId, 'Article');
     assertUuid(authorPublicId, 'User');
     const article = await this.articleRepo.findOne({

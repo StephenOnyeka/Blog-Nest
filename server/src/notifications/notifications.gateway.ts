@@ -27,7 +27,7 @@ export class NotificationsGateway
   async handleConnection(client: Socket) {
     try {
       const token =
-        client.handshake.auth?.token ||
+        (client.handshake.auth as Record<string, string> | undefined)?.token ??
         client.handshake.headers?.authorization?.replace('Bearer ', '');
 
       if (!token) {
@@ -37,10 +37,15 @@ export class NotificationsGateway
 
       const secret =
         this.configService.get<string>('JWT_SECRET') || 'fallback-secret';
-      const payload = this.jwtService.verify(token, { secret });
 
-      if (payload && payload.sub) {
-        const userRoom = `user:${payload.sub}`;
+      // verify() returns the typed payload; only sub is needed for the room
+      const payload = this.jwtService.verify<{ sub?: string }>(token, {
+        secret,
+      });
+      const userSub: string | undefined = payload.sub;
+
+      if (userSub) {
+        const userRoom = `user:${userSub}`;
         await client.join(userRoom);
         console.log(
           `🔌 WebSocket client ${client.id} joined room: ${userRoom}`,
@@ -48,7 +53,7 @@ export class NotificationsGateway
       } else {
         client.disconnect();
       }
-    } catch (err) {
+    } catch {
       console.log(`❌ WebSocket auth failed for client ${client.id}`);
       client.disconnect();
     }
@@ -58,7 +63,7 @@ export class NotificationsGateway
     console.log(`🔌 WebSocket client disconnected: ${client.id}`);
   }
 
-  emitNotification(userPublicId: string, notification: any) {
+  emitNotification(userPublicId: string, notification: object) {
     const room = `user:${userPublicId}`;
     this.server.to(room).emit('notification', notification);
     console.log(`📡 Emitted real-time notification to room: ${room}`);

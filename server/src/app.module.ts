@@ -69,10 +69,10 @@ export class AppModule implements OnModuleInit {
       await this.dataSource.query(
         `ALTER TABLE "notifications" ADD COLUMN IF NOT EXISTS "read_at" TIMESTAMPTZ;`,
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(
         '❌ Failed to initialize database / columns:',
-        error?.message ?? error,
+        error instanceof Error ? error.message : error,
       );
     }
   }

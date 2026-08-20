@@ -16,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../common/auth-request';
 
 @ApiTags('Notifications')
 @ApiBearerAuth('JWT-auth')
@@ -27,21 +28,21 @@ export class NotificationsController {
   @Get()
   @ApiOperation({ summary: 'Get all notifications for authenticated user' })
   @ApiResponse({ status: 200, description: 'List of notifications' })
-  async getAll(@Request() req: any) {
+  async getAll(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.getForUser(req.user.userId);
   }
 
   @Get('unread-count')
   @ApiOperation({ summary: 'Get count of unread notifications' })
   @ApiResponse({ status: 200, description: 'Unread notification count object' })
-  async getUnreadCount(@Request() req: any) {
+  async getUnreadCount(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.getUnreadCount(req.user.userId);
   }
 
   @Patch('read-all')
   @ApiOperation({ summary: 'Mark all unread notifications as read' })
   @ApiResponse({ status: 200, description: 'All notifications marked read' })
-  async markAllRead(@Request() req: any) {
+  async markAllRead(@Request() req: AuthenticatedRequest) {
     return this.notificationsService.markAllRead(req.user.userId);
   }
 
@@ -57,7 +58,10 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Delete a single notification' })
   @ApiParam({ name: 'id', description: 'Notification public UUID' })
   @ApiResponse({ status: 200, description: 'Notification deleted' })
-  async deleteOne(@Request() req: any, @Param('id') id: string) {
+  async deleteOne(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
     return this.notificationsService.deleteNotification(req.user.userId, id);
   }
 }

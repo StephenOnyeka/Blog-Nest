@@ -21,6 +21,14 @@ import {
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../common/auth-request';
+
+interface UpdateProfileBody {
+  name?: string;
+  username?: string;
+  avatar?: string;
+  bio?: string;
+}
 
 @ApiTags('Users')
 @Controller('users')
@@ -71,8 +79,8 @@ export class UsersController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async patchProfile(
     @Param('id') id: string,
-    @Body() body: any,
-    @Request() req: any,
+    @Body() body: UpdateProfileBody,
+    @Request() req: AuthenticatedRequest,
   ) {
     if (req.user.userId !== id) {
       throw new UnauthorizedException('You can only update your own profile');
@@ -89,8 +97,8 @@ export class UsersController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async putProfile(
     @Param('id') id: string,
-    @Body() body: any,
-    @Request() req: any,
+    @Body() body: UpdateProfileBody,
+    @Request() req: AuthenticatedRequest,
   ) {
     if (req.user.userId !== id) {
       throw new UnauthorizedException('You can only update your own profile');
@@ -108,7 +116,10 @@ export class UsersController {
   })
   @ApiResponse({ status: 201, description: 'Successfully followed user' })
   @ApiResponse({ status: 400, description: 'Cannot follow yourself' })
-  async followUser(@Param('authorId') authorId: string, @Request() req: any) {
+  async followUser(
+    @Param('authorId') authorId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     const followerId = req.user.userId;
     return this.usersService.follow(followerId, authorId);
   }
@@ -122,7 +133,10 @@ export class UsersController {
     description: 'Public UUID of author to unfollow',
   })
   @ApiResponse({ status: 200, description: 'Successfully unfollowed user' })
-  async unfollowUser(@Param('authorId') authorId: string, @Request() req: any) {
+  async unfollowUser(
+    @Param('authorId') authorId: string,
+    @Request() req: AuthenticatedRequest,
+  ) {
     const followerId = req.user.userId;
     return this.usersService.unfollow(followerId, authorId);
   }

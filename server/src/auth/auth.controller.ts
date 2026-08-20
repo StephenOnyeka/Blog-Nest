@@ -15,6 +15,19 @@ import {
 } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../common/auth-request';
+
+interface RegisterBody {
+  name: string;
+  username: string;
+  email: string;
+  password: string;
+}
+
+interface LoginBody {
+  email: string;
+  password: string;
+}
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -37,7 +50,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 201, description: 'User successfully registered' })
   @ApiResponse({ status: 400, description: 'User or email already exists' })
-  async register(@Body() body: any) {
+  async register(@Body() body: RegisterBody) {
     const { name, username, email, password } = body;
     return this.authService.register(name, username, email, password);
   }
@@ -56,7 +69,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: 'Successfully authenticated' })
   @ApiResponse({ status: 401, description: 'Invalid email or password' })
-  async login(@Body() body: any) {
+  async login(@Body() body: LoginBody) {
     const { email, password } = body;
     return this.authService.login(email, password);
   }
@@ -70,7 +83,7 @@ export class AuthController {
     description: 'Returns authenticated user profile',
   })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
-  async getProfile(@Request() req: any) {
+  async getProfile(@Request() req: AuthenticatedRequest) {
     return this.authService.getMe(req.user.userId);
   }
 }

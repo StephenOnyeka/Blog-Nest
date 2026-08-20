@@ -2,16 +2,26 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AuthenticatedRequest } from '../common/auth-request';
 
 describe('NotificationsController', () => {
   let controller: NotificationsController;
-  let serviceMock: any;
+  let serviceMock: jest.Mocked<
+    Pick<
+      NotificationsService,
+      | 'getForUser'
+      | 'getUnreadCount'
+      | 'markAllRead'
+      | 'markOneRead'
+      | 'deleteNotification'
+    >
+  >;
 
   const mockReq = {
     user: {
       userId: 'user-uuid-1',
     },
-  };
+  } as AuthenticatedRequest;
 
   beforeEach(async () => {
     serviceMock = {
