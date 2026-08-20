@@ -1,5 +1,4 @@
 const fs = require('fs');
-const path = require('path');
 
 const files = [
     'src/components/ArticleCard.tsx',

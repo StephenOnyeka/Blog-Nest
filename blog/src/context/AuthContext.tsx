@@ -86,4 +86,5 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 };
 
+// oxlint-disable-next-line react/only-export-components -- context hook paired with provider
 export const useAuth = () => useContext(AuthContext);

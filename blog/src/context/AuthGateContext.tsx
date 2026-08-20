@@ -11,6 +11,7 @@ const AuthGateContext = createContext<AuthGateContextType>({
   openAuthModal: () => {},
 });
 
+// oxlint-disable-next-line react/only-export-components -- context hook paired with provider
 export const useAuthGate = () => useContext(AuthGateContext);
 
 /* ─── Provider: wraps the whole app ─────────────────────────────────────── */
